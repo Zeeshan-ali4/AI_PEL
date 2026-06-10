@@ -4,8 +4,8 @@
 
 ## Current build state
 
-- Current task: T01
-- Last completed task: none
+- Current task: T02
+- Last completed task: T01
 - Current branch: main
 - Known blockers: none
 
@@ -45,7 +45,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 # PHASE 0 — Foundations
 
 ## T01 — Repo scaffold + Docker Compose + skeleton app + connectivity check
-- **Status:** TODO
+- **Status:** Done
 - **Goal:** `docker compose up` starts three services (`app`, `opa`, `postgres`); a FastAPI app serves a placeholder page and a `/health` endpoint that confirms it can reach OPA and Postgres.
 - **Depends on:** none
 - **Spec refs:** §3, §4, §10
@@ -60,6 +60,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 # PHASE 1 — Contracts
 
 ## T02 — Pydantic v2 schemas (all five)
+- **Status:** Done
 - **Goal:** Implement Action, Context, Evidence, Decision, EvidenceRecord exactly as spec §5 (including `record_type`, `references_hash`, `threshold_used`).
 - **Depends on:** T01
 - **Spec refs:** §5 (all), §2 (no decision field on Evidence)

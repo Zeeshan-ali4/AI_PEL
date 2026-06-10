@@ -2,6 +2,13 @@
 
 **Companion to:** `MASTER_SPEC.md` v1.1 (the source of truth). This ledger is the *build order*. It does not restate the spec; it points into it.
 
+## Current build state
+
+- Current task: T01
+- Last completed task: none
+- Current branch: main
+- Known blockers: none
+
 ## How to use this ledger
 
 - **Claude Code = architect / orchestrator / reviewer.** It holds this ledger, picks the next task whose dependencies are all `DONE`, hands that one task to Codex, then checks the result against the task's **Done when** and **Reviewer focus** before marking it `DONE`.
@@ -38,6 +45,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 # PHASE 0 — Foundations
 
 ## T01 — Repo scaffold + Docker Compose + skeleton app + connectivity check
+- **Status:** TODO
 - **Goal:** `docker compose up` starts three services (`app`, `opa`, `postgres`); a FastAPI app serves a placeholder page and a `/health` endpoint that confirms it can reach OPA and Postgres.
 - **Depends on:** none
 - **Spec refs:** §3, §4, §10

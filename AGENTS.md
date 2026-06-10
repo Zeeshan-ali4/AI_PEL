@@ -81,3 +81,16 @@ Use one branch per task:
 git checkout main
 git pull
 git checkout -b task/T01-scaffold
+```
+
+After the task passes verification:
+
+```bash
+git status
+git diff --stat
+git diff
+git add .
+git commit -m "T01 scaffold app services and health check"
+```
+
+Then merge back only after review

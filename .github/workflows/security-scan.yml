@@ -1,0 +1,195 @@
+name: Security Scan
+
+on:
+  push:
+    branches: ['task/*', 'impl/*']
+  pull_request:
+    branches: ['main']
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: write
+  actions: read
+
+jobs:
+  codeql:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript  # adjust to your stack
+          queries: security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Run CodeQL analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          output: codeql-results
+          upload: true
+
+      - name: Prepare CodeQL output
+        run: |
+          cp codeql-results/*.sarif codeql-results.sarif 2>/dev/null \
+            || echo '{"runs":[]}' > codeql-results.sarif
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: codeql-results
+          path: codeql-results.sarif
+
+  scanners:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history for Gitleaks
+
+      - name: Semgrep SAST
+        run: |
+          pip install semgrep
+          semgrep --config p/default --config p/owasp-top-ten \
+            --config p/security-audit \
+            --json --output semgrep-results.json . || true
+
+      - name: Gitleaks secrets scan
+        uses: gitleaks/gitleaks-action@v2
+        with:
+          args: detect --report-format json --report-path gitleaks-results.json
+        continue-on-error: true
+
+      - name: Trivy dependency and config scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'json'
+          output: 'trivy-results.json'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+        continue-on-error: true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scanner-results
+          path: |
+            semgrep-results.json
+            gitleaks-results.json
+            trivy-results.json
+
+  sonarcloud:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # SonarCloud needs full history for blame
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests with coverage
+        run: npm test -- --coverage || true
+
+      - name: SonarCloud scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Export SonarCloud issues
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          curl -s -u "$SONAR_TOKEN:" \
+            "https://sonarcloud.io/api/issues/search?componentKeys=${{ vars.SONAR_PROJECT_KEY }}&statuses=OPEN,CONFIRMED&ps=500&types=VULNERABILITY,BUG,CODE_SMELL&severities=BLOCKER,CRITICAL,MAJOR" \
+            -o sonarcloud-results.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sonarcloud-results
+          path: sonarcloud-results.json
+
+  consolidate:
+    needs: [codeql, scanners, sonarcloud]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download previous state
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          name: security-findings-state
+          workflow: security-scan.yml
+          branch: ${{ github.ref_name }}
+          if_no_artifact_found: ignore
+          path: .previous
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: codeql-results
+          path: .
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: scanner-results
+          path: .
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: sonarcloud-results
+          path: .
+
+      - name: Consolidate findings
+        run: |
+          python .github/scripts/consolidate_findings.py \
+            --previous-state .previous/findings-state.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: security-findings-state
+          path: findings-state.json
+          retention-days: 90
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: security-findings
+          path: SECURITY_FINDINGS.md
+          retention-days: 90
+
+      - name: Post summary to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const findings = fs.readFileSync('SECURITY_FINDINGS.md', 'utf8');
+            const openCount = (findings.match(/\*\*Status:\*\* OPEN/g) || []).length;
+            const critHighRegex = /\*\*Severity:\*\* (CRITICAL|HIGH)[\s\S]*?\*\*Status:\*\* (OPEN|PROPOSED_ACCEPTED_RISK|RESOLUTION_PROPOSED)/g;
+            const blockingCount = (findings.match(critHighRegex) || []).length;
+
+            const blocked = blockingCount > 0;
+            const emoji = blocked ? '🔴' : '🟢';
+
+            const body = [
+              `## ${emoji} Security Scan Results`,
+              ``,
+              `**Commit:** \`${context.sha.slice(0, 8)}\``,
+              `**Gate:** ${blocked ? 'BLOCKED' : 'PASS'}`,
+              `**Open findings:** ${openCount} (${blockingCount} blocking)`,
+              ``,
+              `Full findings available as workflow artifact: **security-findings**`,
+              ``,
+              blocked
+                ? '> This task cannot progress until all CRITICAL and HIGH findings are RESOLVED or ACCEPTED_RISK.'
+                : '> No blocking findings detected.',
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body,
+            });

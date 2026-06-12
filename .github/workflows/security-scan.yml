@@ -21,7 +21,7 @@ jobs:
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
-          languages: javascript  # adjust to your stack
+          languages: python  # adjust to your stack
           queries: security-and-quality
 
       - name: Autobuild

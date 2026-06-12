@@ -103,9 +103,17 @@ jobs:
         run: pytest --cov=app --cov-report=xml || true
 
       - name: SonarCloud scan
-        uses: SonarSource/sonarqube-scan-action@v5
+        uses: SonarSource/sonarqube-scan-action@v6
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }}
+            -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
+            -Dsonar.sources=app
+            -Dsonar.python.version=3.11
+            -Dsonar.exclusions=**/__pycache__/**,**/.venv/**,**/venv/**,**/.security/**
+            -Dsonar.python.coverage.reportPaths=coverage.xml
 
       - name: Export SonarCloud issues
         env:

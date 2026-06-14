@@ -10,13 +10,20 @@
 - `MASTER_SPEC.md` §5.5: canonical `EvidenceRecord` schema, including `record_type` and `references_hash`.
 - `MASTER_SPEC.md` §10: schema file layout under `app/schemas/`.
 - `MASTER_SPEC.md` §13: no decision field on Evidence and no policy decision in Python schemas.
-- `TASK_LEDGER.md` T02: implement all five Pydantic v2 schemas; use enums for closed value sets; add plain-English field docstrings/descriptions; imports and hand-built examples validate; Evidence cannot express a decision; write tests under `tests/T02_schemas/`.
+- `TASK_LEDGER.md` T02: dependency T01 is marked Done; implement all five Pydantic v2 schemas; use enums for closed value sets; add plain-English field docstrings/descriptions; imports and hand-built examples validate; Evidence cannot express a decision; write tests under `tests/T02_schemas/`.
 
 ## Target test location
 - `tests/T02_schemas/`
 - Suggested files grouped by concern: `test_action.py`, `test_context.py`, `test_evidence.py`, `test_decision.py`, `test_audit_record.py`, and `test_validation.py`.
+- PM/BA scope note: this brief defines functional/acceptance coverage only; the Implementer may add unit tests at their discretion without expanding T02 product scope.
 
 ## Test cases
+
+### test_task_dependency_and_scope_are_respected
+- **Traces to:** `AGENTS.md` Build workflow; `TASK_LEDGER.md` T02 Depends on / Files; `briefs/T02_architect_brief.md` Allowed files.
+- **Input:** Before implementation, inspect the ledger and changed-file list for T02.
+- **Expected outcome:** T01 is confirmed Done, persistent tests are located only under `tests/T02_schemas/`, schema implementation changes are limited to `app/schemas/action.py`, `app/schemas/context.py`, `app/schemas/evidence.py`, `app/schemas/decision.py`, and `app/schemas/audit.py`, and no T03+ runtime behaviour is implemented.
+- **Notes:** This is a process acceptance check for the downstream Reviewer/QA; it does not require a dedicated automated test if equivalent evidence is captured in review.
 
 ### test_all_schema_modules_import_cleanly
 - **Traces to:** `TASK_LEDGER.md` T02 Done when / Verify; `MASTER_SPEC.md` §10.
@@ -81,7 +88,7 @@
 ## Coverage checklist
 - [x] Happy path covered: valid hand-built examples for all five schemas, including payment and email variants where relevant.
 - [x] Error/edge cases covered: invalid closed-set values, out-of-range confidences/thresholds, malformed SHA-256 hash fields, nullable approval/reference fields, and fail-closed trigger data represented without policy decisions.
-- [x] Spec non-negotiables verified: Evidence has no decision/enforcement/approval fields; schemas do not implement policy logic; `threshold_used`, `record_type`, and `references_hash` are present.
+- [x] Spec non-negotiables verified: Evidence has no decision/enforcement/approval fields; schemas do not implement policy logic; `threshold_used`, `record_type`, and `references_hash` are present; T02 stays within the dependency and allowed-file fence.
 - [x] Real dependencies flagged (no mocks where forbidden): no real external dependencies are required for T02 beyond Pydantic v2 in the app container; OPA, Presidio, and Postgres are out of scope for this schema-only task and must not be mocked into these tests.
 
 ## Gaps or ambiguities

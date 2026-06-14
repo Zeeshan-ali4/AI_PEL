@@ -36,6 +36,23 @@ Agent pipeline:
 
 Architect → PM/BA → Implementer → Reviewer → QA → Release Manager → Human
 
+### Role prompts
+
+Each agent in the pipeline has a detailed role prompt in `agent_prompts/`:
+
+| Role | Prompt file |
+|------|-------------|
+| Architect | [`agent_prompts/architect.md`](agent_prompts/architect.md) |
+| PM / BA | [`agent_prompts/pm_ba.md`](agent_prompts/pm_ba.md) |
+| Spec Guardian | [`agent_prompts/spec_guardian.md`](agent_prompts/spec_guardian.md) |
+| Implementer | [`agent_prompts/implementer.md`](agent_prompts/implementer.md) |
+| Reviewer | [`agent_prompts/reviewer.md`](agent_prompts/reviewer.md) |
+| QA | [`agent_prompts/qa.md`](agent_prompts/qa.md) |
+| Release Manager | [`agent_prompts/release_manager.md`](agent_prompts/release_manager.md) |
+| Demo Reviewer | [`agent_prompts/demo_reviewer.md`](agent_prompts/demo_reviewer.md) |
+
+When starting a pipeline stage, read the corresponding prompt file for that role's full instructions.
+
 The PM/BA Agent reads the Architect Brief and produces a Test Brief defining the QA test cases for the task. The Implementer writes both feature code and test code from these briefs. The QA agent validates that implemented tests cover the PM/BA Test Brief during verification.
 
 After coding:

@@ -120,7 +120,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           curl -s -u "$SONAR_TOKEN:" \
-            "https://sonarcloud.io/api/issues/search?componentKeys=${{ vars.SONAR_PROJECT_KEY }}&statuses=OPEN,CONFIRMED&ps=500&types=VULNERABILITY,BUG,CODE_SMELL&severities=BLOCKER,CRITICAL,MAJOR" \
+          "https://sonarcloud.io/api/issues/search?componentKeys=${{ vars.SONAR_PROJECT_KEY }}&branch=${{ github.ref_name }}&statuses=OPEN,CONFIRMED&ps=500&types=VULNERABILITY,BUG,CODE_SMELL&severities=BLOCKER,CRITICAL,MAJOR" \
             -o sonarcloud-results.json
 
       - uses: actions/upload-artifact@v4

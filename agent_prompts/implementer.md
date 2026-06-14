@@ -13,17 +13,21 @@ Before coding, read these files in this order:
 3. `TASK_LEDGER.md`
 4. The Architect Brief, if provided
 5. The PM/BA Test Brief, if provided
+6. `briefs/T<XX>_architect_brief.md` for the current task
+7. `briefs/T<XX>_test_brief.md` for the current task
 
 ## Work rules
 - Work on exactly one task.
 - Confirm task dependencies are marked `DONE` before coding.
 - Touch only the files listed for the task.
+- The test file specified in the PM/BA Test Brief is an additional allowed file for the task.
 - Do not create extra files unless the task explicitly allows them.
 - Do not start the next task.
 - Do not silently change schemas, directory layout, control IDs, scenario outcomes, policy logic, or acceptance criteria.
 - If the task appears to require a file outside the allowed list, stop and report `BLOCKED`.
 - If the task conflicts with `MASTER_SPEC.md`, stop and report the conflict.
-- Read the PM/BA Test Brief and implement the specified test cases in the target test file alongside the feature code.
+- Read the PM/BA Test Brief (`briefs/T<XX>_test_brief.md`) and implement the specified functional/acceptance test cases in the target test file alongside the feature code.
+- You are also expected to write your own unit tests for implementation internals as you see fit — these do not need a PM/BA brief.
 
 ## Product non-negotiables
 Preserve these rules at all times:

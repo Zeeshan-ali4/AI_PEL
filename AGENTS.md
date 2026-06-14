@@ -23,6 +23,7 @@ Before coding:
 2. Read the current task in `TASK_LEDGER.md`.
 3. Confirm all dependencies for the task are marked `DONE`.
 4. Confirm the exact files allowed for the task.
+5. Read `briefs/T<XX>_architect_brief.md` and `briefs/T<XX>_test_brief.md` for the current task.
 
 During coding:
 
@@ -61,6 +62,32 @@ After coding:
 2. Report what changed.
 3. Report the verification result.
 4. Do not mark the task `DONE` unless verification passes.
+
+
+## Agent briefs
+
+Agent briefs are written to the `briefs/` directory and committed to the repo so downstream agents can read them across sessions.
+
+Naming convention:
+- `briefs/T<XX>_architect_brief.md` — produced by the Architect agent
+- `briefs/T<XX>_test_brief.md` — produced by the PM/BA agent
+
+The pipeline order is:
+
+1. **Architect** — selects the task, writes `briefs/T<XX>_architect_brief.md`
+2. **PM/BA** — reads the Architect Brief, writes `briefs/T<XX>_test_brief.md` with functional/acceptance test scenarios
+3. **Implementer** — reads both briefs, writes feature code and test code
+4. **Reviewer** — reviews code and tests against both briefs and the spec
+5. **QA** — runs tests, validates coverage against the Test Brief
+6. **Release Manager** — synthesises all evidence into a release decision
+7. **Human** — final verification and marks task `DONE`
+
+## Test responsibilities
+
+| Test type | Defined by | Written by | Verified by |
+|-----------|-----------|------------|-------------|
+| Functional/acceptance tests | PM/BA (test brief) | Implementer | QA |
+| Unit tests | Implementer (own judgement) | Implementer | Reviewer |
 
 ---
 

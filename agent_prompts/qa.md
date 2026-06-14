@@ -13,7 +13,8 @@ Before verifying, read these files in this order:
 3. `TASK_LEDGER.md`
 4. The PM/BA Test Brief for the current task, if provided
 5. The relevant implementation diff or report
-6. The Review Report, if provided
+6. `briefs/T<XX>_test_brief.md` for the current task
+7. The Review Report, if provided
 
 ## Verification principles
 - Prefer running the exact command/check from `TASK_LEDGER.md`.
@@ -22,6 +23,7 @@ Before verifying, read these files in this order:
 - Do not accept hard-coded fake success for real dependencies.
 - Treat real-component requirements seriously: OPA, Presidio, Postgres, and audit hash chain must be real where relevant.
 - Validate that implemented tests cover all test cases from the PM/BA Test Brief.
+- Validate that implemented tests cover all test cases from the PM/BA Test Brief (`briefs/T<XX>_test_brief.md`).
 - Flag any Test Brief cases that were skipped or inadequately implemented.
 - Do not author new test cases; report gaps back to the PM/BA agent for a brief update.
 

@@ -10,10 +10,11 @@
 - `MASTER_SPEC.md` §5.5: canonical `EvidenceRecord` schema, including `record_type` and `references_hash`.
 - `MASTER_SPEC.md` §10: schema file layout under `app/schemas/`.
 - `MASTER_SPEC.md` §13: no decision field on Evidence and no policy decision in Python schemas.
-- `TASK_LEDGER.md` T02: implement all five Pydantic v2 schemas; use enums for closed value sets; add plain-English field docstrings/descriptions; imports and hand-built examples validate; Evidence cannot express a decision.
+- `TASK_LEDGER.md` T02: implement all five Pydantic v2 schemas; use enums for closed value sets; add plain-English field docstrings/descriptions; imports and hand-built examples validate; Evidence cannot express a decision; write tests under `tests/T02_schemas/`.
 
-## Target test file
-- No persistent repository test file is in scope for T02 because `TASK_LEDGER.md` lists only the five schema modules as T02 files. Implementer/QA should run the acceptance cases as an inline Python/Pydantic validation check via `docker compose run --rm app python - <<'PY' ... PY`, or request explicit scope expansion before adding a test file.
+## Target test location
+- `tests/T02_schemas/`
+- Suggested files grouped by concern: `test_action.py`, `test_context.py`, `test_evidence.py`, `test_decision.py`, `test_audit_record.py`, and `test_validation.py`.
 
 ## Test cases
 
@@ -84,5 +85,5 @@
 - [x] Real dependencies flagged (no mocks where forbidden): no real external dependencies are required for T02 beyond Pydantic v2 in the app container; OPA, Presidio, and Postgres are out of scope for this schema-only task and must not be mocked into these tests.
 
 ## Gaps or ambiguities
-- `MASTER_SPEC.md` §10 does not list a schema-specific test file and `TASK_LEDGER.md` T02 lists only schema modules as allowed files. This brief therefore defines inline acceptance checks rather than a committed test file. If maintainers want persistent schema tests for T02, they should explicitly expand the T02 allowed file list first.
+- None. `TASK_LEDGER.md` T02 now lists `tests/T02_schemas/` as the allowed target location for persistent schema tests.
 - The spec requires “docstrings explaining each field in plain English.” Tests can verify that models import and fields expose descriptions/docstrings if implemented through Pydantic `Field(description=...)`, but exact prose quality is partly review-based and should be checked manually by Reviewer/QA.

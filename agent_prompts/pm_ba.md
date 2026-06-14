@@ -17,6 +17,7 @@ Before acting, read these files in this order:
 - Read the task's acceptance criteria and Verify step from `TASK_LEDGER.md`.
 - Read the relevant spec sections from `MASTER_SPEC.md` (schemas §5, controls §6, scenarios §7, acceptance §12).
 - Produce a Test Brief defining functional/acceptance test cases: test subfolder target, suggested test file names, test case names, inputs, expected outputs/assertions, and which spec section each test traces back to.
+- **Always specify the target test location.** Use the task's test subfolder from `TASK_LEDGER.md` (e.g., `tests/T02_schemas/`). Never say "no test file in scope" or defer to inline checks. Group test cases into separate files by concern (e.g., `test_action.py`, `test_validation.py`) — do not dump all cases into a single file. Each suggested file should list which test cases it contains.
 - Ensure tests cover happy path, error/edge cases, and any spec non-negotiables relevant to the task.
 - Flag if acceptance criteria are ambiguous or untestable — request spec clarification rather than guessing.
 - For scenarios involving real dependencies (OPA, Presidio, Postgres, hash chain), explicitly state that tests must use real instances, not mocks.
@@ -46,7 +47,10 @@ Write the following structure to `briefs/T<XX>_test_brief.md`:
 - TASK_LEDGER.md: <task acceptance criteria>
 
 ## Target test location
-- Always specify the task's test subfolder from `TASK_LEDGER.md` as the target location (e.g., `tests/T02_schemas/`). Suggest specific file names within it grouped by concern.
+- Folder: <the task's test subfolder from TASK_LEDGER.md, e.g., tests/T02_schemas/>
+- Suggested files:
+  - <test_foo.py — covers test cases X, Y>
+  - <test_bar.py — covers test cases Z>
 
 ## Test cases
 

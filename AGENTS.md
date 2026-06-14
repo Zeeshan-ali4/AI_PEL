@@ -54,7 +54,7 @@ Each agent in the pipeline has a detailed role prompt in `agent_prompts/`:
 
 When starting a pipeline stage, read the corresponding prompt file for that role's full instructions.
 
-The PM/BA Agent reads the Architect Brief and produces a Test Brief defining the QA test cases for the task. The Implementer writes both feature code and test code from these briefs. The QA agent validates that implemented tests cover the PM/BA Test Brief during verification.
+The PM/BA Agent reads the Architect Brief and produces a Test Brief defining the QA test cases for the task. The PM/BA **must always specify a target test file** — never defer testing to inline checks or say "no test file in scope." The Implementer writes both feature code and test code from these briefs. The `tests/` directory is always an allowed location for test files regardless of a task's file list. Every task must produce a committed test file with passing pytest tests. The QA agent validates that implemented tests cover the PM/BA Test Brief during verification.
 
 After coding:
 
@@ -90,6 +90,8 @@ Each task's test subfolder (`tests/T<XX>_<feature>/`) is listed in the task's Fi
 |-----------|-----------|------------|-------------|
 | Functional/acceptance tests | PM/BA (test brief) | Implementer | QA |
 | Unit tests | Implementer (own judgement) | Implementer | Reviewer |
+
+**Every task produces tests.** The PM/BA must specify a target test file path. The Implementer must create that file with real pytest tests. The `tests/` directory is always allowed. A task without a committed test file is incomplete.
 
 ---
 

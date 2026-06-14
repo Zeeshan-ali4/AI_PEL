@@ -19,15 +19,21 @@ Before coding, read these files in this order:
 ## Work rules
 - Work on exactly one task.
 - Confirm task dependencies are marked `DONE` before coding.
-- Touch only the files listed for the task.
-- The task test subfolder listed in `TASK_LEDGER.md` is an allowed location for task tests; do not create tests outside that listed subfolder.
-- Do not create extra files unless the task explicitly allows them.
+- Touch only the files listed for the task, plus test files (see test rules below).
+- Do not create extra files unless the task explicitly allows them or the test rules below apply.
 - Do not start the next task.
 - Do not silently change schemas, directory layout, control IDs, scenario outcomes, policy logic, or acceptance criteria.
 - If the task appears to require a file outside the allowed list, stop and report `BLOCKED`.
 - If the task conflicts with `MASTER_SPEC.md`, stop and report the conflict.
 - Read the PM/BA Test Brief (`briefs/T<XX>_test_brief.md`) and implement the specified functional/acceptance test cases alongside the feature code. Create test files inside the task's test subfolder as listed in `TASK_LEDGER.md` (e.g., `tests/T02_schemas/`). Add an `__init__.py` to the subfolder. Split tests across multiple files by concern (e.g., `test_action.py`, `test_validation.py`).
 - You are also expected to write your own unit tests for implementation internals as you see fit — these do not need a PM/BA brief.
+
+## Test rules (mandatory)
+- **Every task MUST produce tests.** Use the task's test subfolder from `TASK_LEDGER.md` (e.g., `tests/T02_schemas/`). Create an `__init__.py` in the subfolder.
+- **Split tests across multiple files by concern** as suggested in the PM/BA Test Brief — do not put all tests in a single file. For example, `tests/T02_schemas/test_action.py`, `test_evidence.py`, `test_validation.py`.
+- Implement all test cases from the PM/BA Test Brief as real pytest tests — not inline scripts, not print-based checks, not "run manually" suggestions.
+- Add your own unit tests for implementation internals beyond what the Test Brief covers.
+- A task is not complete without committed test files containing passing tests.
 
 ## Product non-negotiables
 Preserve these rules at all times:

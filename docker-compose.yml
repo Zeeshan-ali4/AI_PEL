@@ -12,8 +12,7 @@ services:
       POSTGRES_PORT: "5432"
       POSTGRES_DB: ai_pel
       POSTGRES_USER: ai_pel
-      POSTGRES_PASSWORD: ai_pel
-      DATABASE_URL: postgresql://ai_pel:ai_pel@postgres:5432/ai_pel
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     depends_on:
       - opa
       - postgres
@@ -33,7 +32,7 @@ services:
     environment:
       POSTGRES_DB: ai_pel
       POSTGRES_USER: ai_pel
-      POSTGRES_PASSWORD: ai_pel
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     volumes:
       - postgres_data:/var/lib/postgresql/data
 

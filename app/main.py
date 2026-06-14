@@ -69,7 +69,7 @@ def _check_opa() -> StatusValue:
 def _check_db() -> StatusValue:
     settings = get_settings()
     try:
-        with psycopg.connect(str(settings.database_url), connect_timeout=2) as connection:
+        with psycopg.connect(str(settings.resolved_database_url), connect_timeout=2) as connection:
             with connection.cursor() as cursor:
                 cursor.execute("SELECT 1")
                 cursor.fetchone()

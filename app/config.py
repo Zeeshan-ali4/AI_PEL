@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field, PostgresDsn
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,13 +14,22 @@ class Settings(BaseSettings):
     postgres_port: int = Field(default=5432, validation_alias="POSTGRES_PORT")
     postgres_db: str = Field(default="ai_pel", validation_alias="POSTGRES_DB")
     postgres_user: str = Field(default="ai_pel", validation_alias="POSTGRES_USER")
-    postgres_password: str = Field(default="ai_pel", validation_alias="POSTGRES_PASSWORD")
-    database_url: PostgresDsn = Field(
-        default="postgresql://ai_pel:ai_pel@postgres:5432/ai_pel",
-        validation_alias="DATABASE_URL",
-    )
+    postgres_password: str = Field(validation_alias="POSTGRES_PASSWORD")
+    database_url: str | None = Field(default=None, validation_alias="DATABASE_URL")
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    @property
+    def resolved_database_url(self) -> str:
+        """Return the configured database URL, building one from components if needed."""
+
+        if self.database_url:
+            return self.database_url
+
+        return (
+            f"postgresql://{self.postgres_user}:{self.postgres_password}"
+            f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+        )
 
 
 @lru_cache

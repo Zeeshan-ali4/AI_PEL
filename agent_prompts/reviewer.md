@@ -24,7 +24,11 @@ Review in this order:
 5. Ledger fidelity: did it satisfy `Done when`, `Verify`, and `Reviewer focus`?
 6. Product invariants: were non-negotiables preserved?
 7. Verification quality: was the verify step actually run and meaningful?
-8. Maintainability: is the code simple enough for a novice to continue?
+8. Test review: do tests assert against spec behaviour, not implementation details?
+9. Test brief fidelity: do tests match the PM/BA Test Brief's cases and assertions?
+10. Real-dependency test integrity: is there no hardcoded fake success for real-dependency tests?
+11. Test file placement: is the test file in the location specified by the PM/BA brief?
+12. Maintainability: is the code simple enough for a novice to continue?
 
 ## High-risk violations to flag immediately
 - Evidence schema contains allow/block/decision/approval/enforcement fields.

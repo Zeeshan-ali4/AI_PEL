@@ -1,0 +1,61 @@
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Virtual environments and local package metadata
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Tooling and editor state
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs and runtime output
+*.log
+logs/
+*.pid
+
+# Local databases, generated audit exports, and demo scratch data
+*.db
+*.sqlite
+*.sqlite3
+exports/
+/tmp/
+tmp/
+
+# Docker Compose local overrides and generated state
+.docker/
+docker-compose.override.yml
+
+# Dependency manager caches
+pip-wheel-metadata/
+
+.security/

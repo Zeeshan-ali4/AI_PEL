@@ -23,7 +23,7 @@ class Settings(BaseSettings):
             "port": self.postgres_port,
             "dbname": self.postgres_db,
             "user": self.postgres_user,
-            "password": self.postgres_password,
+            "password": self.postgres_password,  # NOSONAR - runtime env value, not a committed secret
         }
 
 

@@ -12,7 +12,7 @@ services:
       POSTGRES_PORT: "5432"
       POSTGRES_DB: ai_pel
       POSTGRES_USER: ai_pel
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required} # NOSONAR - required env var reference, not a committed secret
     depends_on:
       - opa
       - postgres
@@ -32,7 +32,7 @@ services:
     environment:
       POSTGRES_DB: ai_pel
       POSTGRES_USER: ai_pel
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required} # NOSONAR - required env var reference, not a committed secret
     volumes:
       - postgres_data:/var/lib/postgresql/data
 

@@ -84,6 +84,8 @@ The pipeline order is:
 
 ## Test responsibilities
 
+Each task's test subfolder (`tests/T<XX>_<feature>/`) is listed in the task's Files in `TASK_LEDGER.md`. The Implementer creates an `__init__.py` and one or more `test_*.py` files inside it. The PM/BA Test Brief must reference the task's test subfolder as the target location.
+
 | Test type | Defined by | Written by | Verified by |
 |-----------|-----------|------------|-------------|
 | Functional/acceptance tests | PM/BA (test brief) | Implementer | QA |

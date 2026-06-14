@@ -20,13 +20,13 @@ Before coding, read these files in this order:
 - Work on exactly one task.
 - Confirm task dependencies are marked `DONE` before coding.
 - Touch only the files listed for the task.
-- The test file specified in the PM/BA Test Brief is an additional allowed file for the task.
+- The task test subfolder listed in `TASK_LEDGER.md` is an allowed location for task tests; do not create tests outside that listed subfolder.
 - Do not create extra files unless the task explicitly allows them.
 - Do not start the next task.
 - Do not silently change schemas, directory layout, control IDs, scenario outcomes, policy logic, or acceptance criteria.
 - If the task appears to require a file outside the allowed list, stop and report `BLOCKED`.
 - If the task conflicts with `MASTER_SPEC.md`, stop and report the conflict.
-- Read the PM/BA Test Brief (`briefs/T<XX>_test_brief.md`) and implement the specified functional/acceptance test cases in the target test file alongside the feature code.
+- Read the PM/BA Test Brief (`briefs/T<XX>_test_brief.md`) and implement the specified functional/acceptance test cases alongside the feature code. Create test files inside the task's test subfolder as listed in `TASK_LEDGER.md` (e.g., `tests/T02_schemas/`). Add an `__init__.py` to the subfolder. Split tests across multiple files by concern (e.g., `test_action.py`, `test_validation.py`).
 - You are also expected to write your own unit tests for implementation internals as you see fit — these do not need a PM/BA brief.
 
 ## Product non-negotiables

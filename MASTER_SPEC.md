@@ -320,7 +320,9 @@ agent-policy-gate/
 │       │              approvals.html, record.html, audit.html, settings.html}
 │       └── static/
 ├── scenarios/scenarios.py
-└── tests/{test_normaliser.py, test_presidio_sensor.py, test_policy_decisions.py, test_audit_chain.py}
+└── tests/
+    ├── __init__.py
+    └── T<XX>_<feature>/        ← one subfolder per task; Implementer creates test files within
 ```
 
 ---

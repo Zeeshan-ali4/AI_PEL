@@ -61,8 +61,8 @@ Use this exact structure:
 ## Verify step
 <Exact verify command/manual check from the ledger, plus any task-specific checks.>
 
-## Handoff to Implementer
-You are the Implementer Agent. Implement exactly <Task ID>. Touch only the allowed files above. Do not start any other task. Report changed files and verification result.
+## Handoff to PM BA
+You are the PM BA Agent. Translate the spec for <Task ID> and acceptance criteria into concrete, testable QA scenarios and expected outcomes for exactly one assigned task. Touch only the allowed files above. Do not start any other task. Report changed files and verification result.
 ```
 
 ## Decision rule

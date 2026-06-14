@@ -60,7 +60,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 # PHASE 1 — Contracts
 
 ## T02 — Pydantic v2 schemas (all five)
-- **Status:** Done
+- **Status:** To do
 - **Goal:** Implement Action, Context, Evidence, Decision, EvidenceRecord exactly as spec §5 (including `record_type`, `references_hash`, `threshold_used`).
 - **Depends on:** T01
 - **Spec refs:** §5 (all), §2 (no decision field on Evidence)

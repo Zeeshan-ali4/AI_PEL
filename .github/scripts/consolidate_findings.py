@@ -7,7 +7,6 @@ applies status transition rules, and produces:
 """
 import argparse
 import json
-import re
 from datetime import datetime, timezone
 from pathlib import Path
 

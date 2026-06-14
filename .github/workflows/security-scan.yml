@@ -162,15 +162,18 @@ jobs:
       - name: Consolidate findings
         run: |
           python .github/scripts/consolidate_findings.py \
-            --previous-state .previous/findings-state.json
+            --previous-state .previous/findings-state.json \
+            --fail-on-blocking
 
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: security-findings-state
           path: findings-state.json
           retention-days: 90
 
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: security-findings
           path: SECURITY_FINDINGS.md

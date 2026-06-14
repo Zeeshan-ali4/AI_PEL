@@ -318,6 +318,7 @@ def write_markdown(state, path="SECURITY_FINDINGS.md"):
         f"Wrote {len(sorted_findings)} findings to {path} "
         f"({open_count} open, {blocking_count} blocking)"
     )
+    return blocking_count
 
 
 # ---------------------------------------------------------------------------
@@ -327,6 +328,11 @@ def write_markdown(state, path="SECURITY_FINDINGS.md"):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--previous-state", default=None)
+    parser.add_argument(
+        "--fail-on-blocking",
+        action="store_true",
+        help="Exit with status code 1 when blocking findings exist.",
+    )
     args = parser.parse_args()
 
     previous_state = load_previous_state(args.previous_state)
@@ -360,7 +366,13 @@ def main():
 
     # Write outputs
     write_state(new_state)
-    write_markdown(new_state)
+    blocking_count = write_markdown(new_state)
+
+    if args.fail_on_blocking and blocking_count > 0:
+        print(
+            f"Security gate failed: {blocking_count} blocking finding(s) found."
+        )
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

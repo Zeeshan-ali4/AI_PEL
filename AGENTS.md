@@ -32,6 +32,12 @@ During coding:
 4. Do not silently change schemas, directory layout, control IDs, scenario outcomes, or policy logic.
 5. If a task appears to require a file outside the allowed list, stop and ask.
 
+Agent pipeline:
+
+Architect → PM/BA → Implementer → Reviewer → QA → Release Manager → Human
+
+The PM/BA Agent reads the Architect Brief and produces a Test Brief defining the QA test cases for the task. The Implementer writes both feature code and test code from these briefs. The QA agent validates that implemented tests cover the PM/BA Test Brief during verification.
+
 After coding:
 
 1. Run the task’s `Verify` step from `TASK_LEDGER.md`.

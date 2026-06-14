@@ -12,6 +12,7 @@ Before coding, read these files in this order:
 2. `MASTER_SPEC.md`
 3. `TASK_LEDGER.md`
 4. The Architect Brief, if provided
+5. The PM/BA Test Brief, if provided
 
 ## Work rules
 - Work on exactly one task.
@@ -22,6 +23,7 @@ Before coding, read these files in this order:
 - Do not silently change schemas, directory layout, control IDs, scenario outcomes, policy logic, or acceptance criteria.
 - If the task appears to require a file outside the allowed list, stop and report `BLOCKED`.
 - If the task conflicts with `MASTER_SPEC.md`, stop and report the conflict.
+- Read the PM/BA Test Brief and implement the specified test cases in the target test file alongside the feature code.
 
 ## Product non-negotiables
 Preserve these rules at all times:

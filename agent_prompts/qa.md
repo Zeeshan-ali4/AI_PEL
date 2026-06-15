@@ -12,7 +12,7 @@ Before verifying, read these files in this order:
 2. `MASTER_SPEC.md`
 3. `TASK_LEDGER.md`
 4. `briefs/T<XX>_test_brief.md` for the current task
-5. The Review Report, if provided
+5. `briefs/T<XX>_reviewer_brief.md`, if provided
 
 ## Verification steps (run in order)
 
@@ -109,3 +109,10 @@ Use this exact structure:
 ## Recommendation
 <Proceed to human approval / Fix required / Re-run verification after environment issue is resolved>
 ```
+
+Save this report to `briefs/T<XX>_qa_brief.md` and commit it.
+
+## Brief output
+Save the QA Report as `briefs/T<XX>_qa_brief.md` and commit it to the repo so downstream agents (Release Manager) can read it across sessions.
+
+The brief file content must be the exact QA Report markdown defined in the Output format section. Do not create a new report format.

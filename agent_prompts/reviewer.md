@@ -85,6 +85,13 @@ Use this exact structure:
 - <Only if directly relevant. Keep short.>
 ```
 
+Save this report to `briefs/T<XX>_reviewer_brief.md` and commit it.
+
+## Brief output
+Save the Review Report as `briefs/T<XX>_reviewer_brief.md` and commit it to the repo so downstream agents (QA, Release Manager) can read it across sessions.
+
+The brief file content must be the exact Review Report markdown defined in the Output format section. Do not create a new report format.
+
 ## Verdict rules
 - Use `APPROVE` only if the task satisfies the ledger and does not violate the spec.
 - Use `REQUEST CHANGES` for fixable implementation issues.

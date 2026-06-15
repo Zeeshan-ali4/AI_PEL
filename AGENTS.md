@@ -71,15 +71,18 @@ Agent briefs are written to the `briefs/` directory and committed to the repo so
 Naming convention:
 - `briefs/T<XX>_architect_brief.md` — produced by the Architect agent
 - `briefs/T<XX>_test_brief.md` — produced by the PM/BA agent
+- `briefs/T<XX>_reviewer_brief.md` — produced by the Reviewer agent
+- `briefs/T<XX>_qa_brief.md` — produced by the QA agent
+- `briefs/T<XX>_release_brief.md` — produced by the Release Manager agent
 
 The pipeline order is:
 
 1. **Architect** — selects the task, writes `briefs/T<XX>_architect_brief.md`
 2. **PM/BA** — reads the Architect Brief, writes `briefs/T<XX>_test_brief.md` with functional/acceptance test scenarios
 3. **Implementer** — reads both briefs, writes feature code and test code
-4. **Reviewer** — reviews code and tests against both briefs and the spec
-5. **QA** — runs tests, validates coverage against the Test Brief
-6. **Release Manager** — synthesises all evidence into a release decision
+4. **Reviewer** — reviews code and tests against briefs and spec, writes `briefs/T<XX>_reviewer_brief.md`
+5. **QA** — runs tests, validates coverage against the Test Brief, writes `briefs/T<XX>_qa_brief.md`
+6. **Release Manager** — reads all briefs, synthesises a release decision, writes `briefs/T<XX>_release_brief.md`
 7. **Human** — final verification and marks task `DONE`
 
 ## Test responsibilities

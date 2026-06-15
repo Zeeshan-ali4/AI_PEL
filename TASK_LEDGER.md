@@ -4,8 +4,8 @@
 
 ## Current build state
 
-- Current task: T02
-- Last completed task: T01
+- Current task: T03
+- Last completed task: T02
 - Current branch: main
 - Known blockers: none
 
@@ -60,7 +60,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 # PHASE 1 — Contracts
 
 ## T02 — Pydantic v2 schemas (all five)
-- **Status:** To do
+- **Status:** Done
 - **Goal:** Implement Action, Context, Evidence, Decision, EvidenceRecord exactly as spec §5 (including `record_type`, `references_hash`, `threshold_used`).
 - **Depends on:** T01
 - **Spec refs:** §5 (all), §2 (no decision field on Evidence)
@@ -75,6 +75,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 # PHASE 2 — Components
 
 ## T03 — Scenarios + agent simulator + SDK wrapper (PEP)
+- **Status:** To do
 - **Goal:** Encode the six scenarios (spec §7) as data; an agent simulator that emits a raw tool call per scenario; an SDK wrapper that **intercepts** the call and hands it to the pipeline entry point (pipeline itself comes in T13 — for now the wrapper calls a placeholder that echoes the raw call).
 - **Depends on:** T02
 - **Spec refs:** §7, §3 (PEP), §1 (interception is the headline)

@@ -1,0 +1,1 @@
+"""Canonical Pydantic schema package for Runtime Policy Enforcement Gate contracts."""

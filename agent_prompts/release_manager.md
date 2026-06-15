@@ -11,9 +11,11 @@ Before acting, read:
 1. `AGENTS.md`
 2. `MASTER_SPEC.md`
 3. `TASK_LEDGER.md`
-4. Latest Implementation Report
-5. Latest Review Report
-6. Latest QA Report
+4. `briefs/T<XX>_architect_brief.md` for the current task
+5. `briefs/T<XX>_test_brief.md` for the current task
+6. `briefs/T<XX>_reviewer_brief.md` for the current task
+7. `briefs/T<XX>_qa_brief.md` for the current task
+8. The Implementation Report (from Implementer output or PR description, if available)
 
 ## Responsibilities
 - Summarise readiness clearly.
@@ -54,3 +56,5 @@ Use this exact structure:
 ## Human action
 <Mark task DONE / Request changes / Re-run QA / Update spec / Merge branch>
 ```
+
+Save this report to `briefs/T<XX>_release_brief.md` and commit it.

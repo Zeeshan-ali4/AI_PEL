@@ -23,6 +23,7 @@ Before coding:
 2. Read the current task in `TASK_LEDGER.md`.
 3. Confirm all dependencies for the task are marked `DONE`.
 4. Confirm the exact files allowed for the task.
+5. Read `briefs/T<XX>_architect_brief.md` and `briefs/T<XX>_test_brief.md` for the current task.
 
 During coding:
 
@@ -36,7 +37,24 @@ Agent pipeline:
 
 Architect → PM/BA → Implementer → Reviewer → QA → Release Manager → Human
 
-The PM/BA Agent reads the Architect Brief and produces a Test Brief defining the QA test cases for the task. The Implementer writes both feature code and test code from these briefs. The QA agent validates that implemented tests cover the PM/BA Test Brief during verification.
+### Role prompts
+
+Each agent in the pipeline has a detailed role prompt in `agent_prompts/`:
+
+| Role | Prompt file |
+|------|-------------|
+| Architect | [`agent_prompts/architect.md`](agent_prompts/architect.md) |
+| PM / BA | [`agent_prompts/pm_ba.md`](agent_prompts/pm_ba.md) |
+| Spec Guardian | [`agent_prompts/spec_guardian.md`](agent_prompts/spec_guardian.md) |
+| Implementer | [`agent_prompts/implementer.md`](agent_prompts/implementer.md) |
+| Reviewer | [`agent_prompts/reviewer.md`](agent_prompts/reviewer.md) |
+| QA | [`agent_prompts/qa.md`](agent_prompts/qa.md) |
+| Release Manager | [`agent_prompts/release_manager.md`](agent_prompts/release_manager.md) |
+| Demo Reviewer | [`agent_prompts/demo_reviewer.md`](agent_prompts/demo_reviewer.md) |
+
+When starting a pipeline stage, read the corresponding prompt file for that role's full instructions.
+
+The PM/BA Agent reads the Architect Brief and produces a Test Brief defining the QA test cases for the task. The PM/BA **must always specify a target test file** — never defer testing to inline checks or say "no test file in scope." The Implementer writes both feature code and test code from these briefs. The `tests/` directory is always an allowed location for test files regardless of a task's file list. Every task must produce a committed test file with passing pytest tests. The QA agent validates that implemented tests cover the PM/BA Test Brief during verification.
 
 After coding:
 
@@ -44,6 +62,39 @@ After coding:
 2. Report what changed.
 3. Report the verification result.
 4. Do not mark the task `DONE` unless verification passes.
+
+
+## Agent briefs
+
+Agent briefs are written to the `briefs/` directory and committed to the repo so downstream agents can read them across sessions.
+
+Naming convention:
+- `briefs/T<XX>_architect_brief.md` — produced by the Architect agent
+- `briefs/T<XX>_test_brief.md` — produced by the PM/BA agent
+- `briefs/T<XX>_reviewer_brief.md` — produced by the Reviewer agent
+- `briefs/T<XX>_qa_brief.md` — produced by the QA agent
+- `briefs/T<XX>_release_brief.md` — produced by the Release Manager agent
+
+The pipeline order is:
+
+1. **Architect** — selects the task, writes `briefs/T<XX>_architect_brief.md`
+2. **PM/BA** — reads the Architect Brief, writes `briefs/T<XX>_test_brief.md` with functional/acceptance test scenarios
+3. **Implementer** — reads both briefs, writes feature code and test code
+4. **Reviewer** — reviews code and tests against briefs and spec, writes `briefs/T<XX>_reviewer_brief.md`
+5. **QA** — runs tests, validates coverage against the Test Brief, writes `briefs/T<XX>_qa_brief.md`
+6. **Release Manager** — reads all briefs, synthesises a release decision, writes `briefs/T<XX>_release_brief.md`
+7. **Human** — final verification and marks task `DONE`
+
+## Test responsibilities
+
+Each task's test subfolder (`tests/T<XX>_<feature>/`) is listed in the task's Files in `TASK_LEDGER.md`. The Implementer creates an `__init__.py` and one or more `test_*.py` files inside it. The PM/BA Test Brief must reference the task's test subfolder as the target location.
+
+| Test type | Defined by | Written by | Verified by |
+|-----------|-----------|------------|-------------|
+| Functional/acceptance tests | PM/BA (test brief) | Implementer | QA |
+| Unit tests | Implementer (own judgement) | Implementer | Reviewer |
+
+**Every task produces tests.** The PM/BA must specify a target test file path. The Implementer must create that file with real pytest tests. The `tests/` directory is always allowed. A task without a committed test file is incomplete.
 
 ---
 

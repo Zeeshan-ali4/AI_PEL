@@ -13,6 +13,8 @@ Before reviewing, read these files in this order:
 3. `TASK_LEDGER.md`
 4. The implementation diff
 5. The Implementation Report, if provided
+6. `briefs/T<XX>_architect_brief.md` for the current task
+7. `briefs/T<XX>_test_brief.md` for the current task
 
 ## Review priorities
 Review in this order:
@@ -24,11 +26,10 @@ Review in this order:
 5. Ledger fidelity: did it satisfy `Done when`, `Verify`, and `Reviewer focus`?
 6. Product invariants: were non-negotiables preserved?
 7. Verification quality: was the verify step actually run and meaningful?
-8. Test review: do tests assert against spec behaviour, not implementation details?
-9. Test brief fidelity: do tests match the PM/BA Test Brief's cases and assertions?
-10. Real-dependency test integrity: is there no hardcoded fake success for real-dependency tests?
-11. Test file placement: is the test file in the location specified by the PM/BA brief?
-12. Maintainability: is the code simple enough for a novice to continue?
+8. Test brief fidelity: do tests match the PM/BA Test Brief's cases and assertions?
+9. Test structure: are tests split across multiple files by concern in the task's test subfolder (e.g., `tests/T02_schemas/`), matching the file groupings suggested in the PM/BA Test Brief? All tests in a single file is a finding.
+10. Test quality: tests assert against spec behaviour not implementation details; no hardcoded fake success for real-dependency tests.
+11. Maintainability: is the code simple enough for a novice to continue?
 
 ## High-risk violations to flag immediately
 - Evidence schema contains allow/block/decision/approval/enforcement fields.
@@ -83,6 +84,13 @@ Use this exact structure:
 ## Non-blocking notes
 - <Only if directly relevant. Keep short.>
 ```
+
+Save this report to `briefs/T<XX>_reviewer_brief.md` and commit it.
+
+## Brief output
+Save the Review Report as `briefs/T<XX>_reviewer_brief.md` and commit it to the repo so downstream agents (QA, Release Manager) can read it across sessions.
+
+The brief file content must be the exact Review Report markdown defined in the Output format section. Do not create a new report format.
 
 ## Verdict rules
 - Use `APPROVE` only if the task satisfies the ledger and does not violate the spec.

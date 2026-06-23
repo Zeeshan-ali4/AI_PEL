@@ -173,7 +173,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** prohibited block does **not** go to the human queue (it's a hard stop); escalations do; shadow logic correct.
 
 ## T12 — Audit store + hash chain (tamper-evident)
-- **Status:** To do
+- **Status:** Review
 - **Goal:** SQLAlchemy model + store that writes append-only EvidenceRecords with SHA-256 hash chaining (spec §5.5), plus `verify_chain()` and a `simulate_tampering()` helper that alters a stored row in place (to demo breakage).
 - **Depends on:** T02, T01
 - **Spec refs:** §5.5, §8A items 5–6

@@ -4,8 +4,8 @@
 
 ## Current build state
 
-- Current task: T09
-- Last completed task: T08
+- Current task: T10
+- Last completed task: T09
 - Known blockers: none
 
 ## How to use this ledger
@@ -140,7 +140,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** persistence works; threshold is a single source consumed everywhere (no hard-coded 0.75 elsewhere).
 
 ## T09 — OPA round-trip (prove the HTTP path before real policy)
-- **Status:** IN_PROGRESS
+- **Status:** Done
 - **Goal:** `controls.json` (control metadata + framework mappings, spec §6); `opa_client.py` that POSTs `{action, context, evidence, config}` to OPA and parses a Decision; a **trivial** Rego policy that returns `allow` for everything, just to prove the round-trip.
 - **Depends on:** T02, T08
 - **Spec refs:** §6, §5.4, §3
@@ -151,6 +151,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** the input contract is explicit and stable; fail-closed is real (not a try/except that swallows and allows).
 
 ## T10 — OPA real policies + precedence (the heart)
+- **Status:** To do
 - **Goal:** Implement all controls (spec §6) in Rego across `payment.rego`, `email.rego`, `common.rego`, with the precedence resolver (`fail_closed > block > escalate > require_evidence > modify > allow_with_logging > allow`) and the configurable threshold from `config.high_confidence_threshold`. Output the full Decision (§5.4) including `triggered_controls`, `control_id`, `reason`, `required_approval_role`, `framework_mappings`, `threshold_used`.
 - **Depends on:** T09
 - **Spec refs:** §6 (every control), §5.4, §2 (default-to-human)

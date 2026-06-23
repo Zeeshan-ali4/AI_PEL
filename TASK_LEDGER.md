@@ -4,8 +4,8 @@
 
 ## Current build state
 
-- Current task: T06
-- Last completed task: T05
+- Current task: T07
+- Last completed task: T06
 - Known blockers: none
 
 ## How to use this ledger
@@ -107,7 +107,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** fixtures actually drive the intended decisions; nothing real is being called.
 
 ## T06 — Presidio sensor (REAL)
-- **Status:** To do
+- **Status:** Done
 - **Goal:** A real `presidio-analyzer` sensor that detects PII/PHI in email bodies and returns entities + spans + scores. Add a custom recognizer for UK NHS number.
 - **Depends on:** T02 (+ T01 for the spaCy model in the image)
 - **Spec refs:** §5.3 (detected_entities, evidence_spans), §2 (deterministic first)
@@ -118,6 +118,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** entities are genuinely from Presidio (not hardcoded); spans line up with the text.
 
 ## T07 — Nuance stub + evidence builder
+- **Status:** To do
 - **Goal:** A clearly-labelled stub nuance classifier (deterministic-by-input: planted phrases → fixed confidences 0.88 / 0.62 / low) and an evidence builder that assembles the full Evidence object (spec §5.3) from Presidio + stub.
 - **Depends on:** T06
 - **Spec refs:** §5.3, §7, §1B (labelling)

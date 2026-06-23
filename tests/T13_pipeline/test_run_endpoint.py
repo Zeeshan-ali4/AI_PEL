@@ -7,14 +7,13 @@ from app.audit.store import AuditStore
 from app.main import app
 from app.pipeline import PolicyPipeline
 from app.settings_store import SettingsStore
-from tests.T13_pipeline.test_pipeline_records import fake_decide
 
 
-def test_post_run_endpoint_returns_decision_and_record_hash(tmp_path, monkeypatch):
-    monkeypatch.setattr("app.policy.opa_client.decide", fake_decide)
+def test_post_run_endpoint_returns_decision_and_record_hash(tmp_path, monkeypatch, opa_url):
     pipe = PolicyPipeline(
         settings_store=SettingsStore(f"sqlite:///{tmp_path / 'settings.db'}"),
         audit_store=AuditStore(f"sqlite:///{tmp_path / 'audit.db'}"),
+        opa_url=opa_url,
     )
     monkeypatch.setattr(pipeline_module, "_default_pipeline", pipe)
 

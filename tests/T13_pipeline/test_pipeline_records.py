@@ -2,36 +2,19 @@ from __future__ import annotations
 
 from app.audit.store import AuditStore
 from app.pipeline import PolicyPipeline
-from app.schemas.decision import Decision
 from app.settings_store import SettingsStore
 
 
-def fake_decide(action, context, evidence, config, *, opa_url=None):
-    threshold = config["high_confidence_threshold"]
-    if context.customer.fraud_flag or context.customer.sanctions_match or context.customer.status == "blocked":
-        return Decision(decision="block", control_id="FIN-PAY-001", triggered_controls=["FIN-PAY-001"], reason="Prohibited payment risk", required_approval_role=None, framework_mappings=["fraud"], failure_mode="fail_closed", logging_requirements="enhanced", policy_version="test", threshold_used=threshold)
-    if action.action_type == "financial.payment.issue" and action.parameters.get("amount_gbp", 0) > 500 and not context.approval_state.has_approval:
-        return Decision(decision="escalate", control_id="FIN-PAY-002", triggered_controls=["FIN-PAY-002"], reason="Large payment needs approval", required_approval_role="finance_supervisor", framework_mappings=["approval"], failure_mode="fail_closed", logging_requirements="enhanced", policy_version="test", threshold_used=threshold)
-    if action.action_type == "communication.email.send":
-        if context.recipient.is_external and evidence.contains_special_category_data and not context.recipient.approved_disclosure_basis:
-            return Decision(decision="escalate", control_id="COMM-EMAIL-001", triggered_controls=["COMM-EMAIL-001"], reason="Special category disclosure", required_approval_role="data_protection_approver", framework_mappings=["gdpr"], failure_mode="fail_closed", logging_requirements="enhanced", policy_version="test", threshold_used=threshold)
-        if context.recipient.is_external and evidence.vulnerability_indicators.present and evidence.overall_confidence < threshold:
-            return Decision(decision="escalate", control_id="COMM-EMAIL-002", triggered_controls=["COMM-EMAIL-002"], reason="Uncertain vulnerability", required_approval_role="vulnerable_customer_team", framework_mappings=["vulnerability"], failure_mode="fail_closed", logging_requirements="enhanced", policy_version="test", threshold_used=threshold)
-        if context.recipient.is_external and evidence.contains_personal_data:
-            return Decision(decision="allow_with_logging", control_id="COMM-EMAIL-003", triggered_controls=["COMM-EMAIL-003"], reason="Personal data logged", required_approval_role=None, framework_mappings=["accountability"], failure_mode="fail_closed", logging_requirements="enhanced", policy_version="test", threshold_used=threshold)
-    return Decision(decision="allow", control_id=None, triggered_controls=[], reason="No controls triggered", required_approval_role=None, framework_mappings=[], failure_mode="fail_closed", logging_requirements="standard", policy_version="test", threshold_used=threshold)
-
-
-def pipeline(tmp_path, monkeypatch):
-    monkeypatch.setattr("app.policy.opa_client.decide", fake_decide)
+def pipeline(tmp_path, opa_url):
     return PolicyPipeline(
         settings_store=SettingsStore(f"sqlite:///{tmp_path / 'settings.db'}"),
         audit_store=AuditStore(f"sqlite:///{tmp_path / 'audit.db'}"),
+        opa_url=opa_url,
     )
 
 
-def test_all_six_scenarios_write_expected_records_and_intact_chain(tmp_path, monkeypatch):
-    pipe = pipeline(tmp_path, monkeypatch)
+def test_all_six_scenarios_write_expected_records_and_intact_chain(tmp_path, opa_url):
+    pipe = pipeline(tmp_path, opa_url)
     expected = {
         1: ("allow", None, None),
         2: ("escalate", "FIN-PAY-002", "finance_supervisor"),
@@ -48,6 +31,7 @@ def test_all_six_scenarios_write_expected_records_and_intact_chain(tmp_path, mon
         assert result.decision.required_approval_role == role
         assert result.record.record_hash
         assert result.record.record_type == "action_evaluation"
+        assert result.decision.policy_version == "1.0.0-t10"
 
     records = pipe.audit_store.read_records()
     assert len(records) == 6
@@ -59,8 +43,8 @@ def test_all_six_scenarios_write_expected_records_and_intact_chain(tmp_path, mon
     assert records[4].evidence.overall_confidence == 0.62
 
 
-def test_escalation_queues_but_block_does_not(tmp_path, monkeypatch):
-    pipe = pipeline(tmp_path, monkeypatch)
+def test_escalation_queues_but_block_does_not(tmp_path, opa_url):
+    pipe = pipeline(tmp_path, opa_url)
     scenario_2 = pipe.run_scenario(2)
     scenario_3 = pipe.run_scenario(3)
 
@@ -72,8 +56,8 @@ def test_escalation_queues_but_block_does_not(tmp_path, monkeypatch):
     assert len(pipe.approval_queue.list_pending()) == 1
 
 
-def test_threshold_flip_for_scenario_5(tmp_path, monkeypatch):
-    pipe = pipeline(tmp_path, monkeypatch)
+def test_threshold_flip_for_scenario_5(tmp_path, opa_url):
+    pipe = pipeline(tmp_path, opa_url)
     assert pipe.run_scenario(5).decision.decision == "escalate"
     pipe.settings_store.update_threshold(0.60)
     lowered = pipe.run_scenario(5)

@@ -4,8 +4,8 @@
 
 ## Current build state
 
-- Current task: T10
-- Last completed task: T09
+- Current task: T11
+- Last completed task: T10
 - Known blockers: none
 
 ## How to use this ledger
@@ -151,7 +151,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** the input contract is explicit and stable; fail-closed is real (not a try/except that swallows and allows).
 
 ## T10 — OPA real policies + precedence (the heart)
-- **Status:** To do
+- **Status:** Done
 - **Goal:** Implement all controls (spec §6) in Rego across `payment.rego`, `email.rego`, `common.rego`, with the precedence resolver (`fail_closed > block > escalate > require_evidence > modify > allow_with_logging > allow`) and the configurable threshold from `config.high_confidence_threshold`. Output the full Decision (§5.4) including `triggered_controls`, `control_id`, `reason`, `required_approval_role`, `framework_mappings`, `threshold_used`.
 - **Depends on:** T09
 - **Spec refs:** §6 (every control), §5.4, §2 (default-to-human)
@@ -162,6 +162,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** precedence is correct (a flagged-fraud + over-£500 case still resolves to `block`); no decision logic leaked into Python; threshold is read from input, not hardcoded.
 
 ## T11 — Enforcement handler + approval queue (append-only)
+- **Status:** To do
 - **Goal:** Apply a Decision under a mode (shadow/soft/full): determine `executed`; route `escalate` to an in-app approval queue with the `required_approval_role`. Approve/Reject **appends** a linked `approval_decision` record (no mutation).
 - **Depends on:** T10 (decisions to act on)
 - **Spec refs:** §8, §8A item 4, §5.5 (append-only)

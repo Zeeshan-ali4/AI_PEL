@@ -4,8 +4,8 @@
 
 ## Current build state
 
-- Current task: T12
-- Last completed task: T11
+- Current task: T13
+- Last completed task: T12
 - Known blockers: none
 
 ## How to use this ledger
@@ -173,7 +173,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** prohibited block does **not** go to the human queue (it's a hard stop); escalations do; shadow logic correct.
 
 ## T12 — Audit store + hash chain (tamper-evident)
-- **Status:** Review
+- **Status:** Done
 - **Goal:** SQLAlchemy model + store that writes append-only EvidenceRecords with SHA-256 hash chaining (spec §5.5), plus `verify_chain()` and a `simulate_tampering()` helper that alters a stored row in place (to demo breakage).
 - **Depends on:** T02, T01
 - **Spec refs:** §5.5, §8A items 5–6
@@ -184,6 +184,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** hashing is deterministic/canonical; normal write path cannot update rows; tamper helper is isolated and labelled.
 
 ## T13 — pipeline.py (INTEGRATION MILESTONE)
+- **Status:** To do
 - **Goal:** Wire the full loop per spec §11: intercept → normalise → resolve → (semantic if email) → load settings → OPA decide → enforce → write record. Expose a JSON endpoint `POST /run/{scenario_id}` returning the Decision + record hash.
 - **Depends on:** T03–T12
 - **Spec refs:** §11, §12

@@ -7,12 +7,13 @@
 
 ## Source-of-truth references
 - MASTER_SPEC.md: §1 (what the demo proves), §2 (principles: model is evidence only, OPA is judge, fail closed), §3 (logical architecture), §5.1–§5.5 (Action, Context, Evidence, Decision, Evidence Record contracts), §6 (control library, precedence, threshold), §7 (six scenario outcomes), §8 (enforcement modes), §10 (canonical file layout), §11 (pipeline order), §12 (acceptance criteria), §13 (scope fences).
-- TASK_LEDGER.md: Current build state; golden rules; T13 task block including goal, dependencies, files, key notes, done-when, verify step, and reviewer focus.
+- TASK_LEDGER.md: Current build state; golden rules; T13 task block including goal, dependencies, files, key notes, done-when, verify step, and reviewer focus. Note: the ledger's real verification runs against `http://localhost:8080/run/{scenario_id}` on the running app, so T13 must also allow the minimal `app/main.py` change needed to register the route router with the FastAPI application.
 - AGENTS.md: Work on exactly one task; MASTER_SPEC.md wins conflicts; touch only listed task files plus required tests; do not change schemas, layout, control IDs, scenario outcomes, or policy logic; every task must produce pytest tests under the task test folder; do not mark DONE unless verification passes.
 
 ## Allowed files
 - app/pipeline.py
 - app/web/routes.py
+- app/main.py — only for importing/registering the T13 router so `POST /run/{scenario_id}` exists on the real running app used by the ledger curl verification; do not otherwise refactor the application scaffold.
 - tests/T13_pipeline/
 
 ## Implementation objective
@@ -22,7 +23,7 @@ This task should integrate existing components from T03–T12, not reimplement t
 
 ## Non-negotiables
 - Work on T13 only. Do not start any UI task and do not broaden the endpoint beyond the JSON integration endpoint required here.
-- Touch only `app/pipeline.py`, `app/web/routes.py`, and files under `tests/T13_pipeline/`.
+- Touch only `app/pipeline.py`, `app/web/routes.py`, the minimal route-registration lines in `app/main.py`, and files under `tests/T13_pipeline/`.
 - Preserve the exact canonical schemas from MASTER_SPEC.md §5. Do not add decision/enforcement fields to Evidence.
 - Preserve scenario outcomes exactly as MASTER_SPEC.md §7:
   - Scenario 1: `allow`, no control.
@@ -38,7 +39,7 @@ This task should integrate existing components from T03–T12, not reimplement t
 - The audit write must use the T12 append-only store/hash-chain path. Do not mutate existing records.
 - Enforcement must use the T11 handler/approval queue interfaces. Blocks do not go to the human queue; escalations do.
 - Fail-closed paths must be reachable: context resolution failure, sensor error, or OPA failure must result in a written record with a `fail_closed` Decision.
-- Do not hardcode final policy outcomes in `pipeline.py` or `routes.py`; outcomes must emerge from context/evidence/settings passed to OPA.
+- Do not hardcode final policy outcomes in `pipeline.py`, `routes.py`, tests, or fake decision functions; normal-path scenario outcomes must emerge from context/evidence/settings passed to the real OPA/Rego policy path. Boundary simulation/mocking is acceptable only for explicit failure-path tests such as OPA unavailable or sensor/context failure.
 - Do not create new production files outside the canonical layout or additional helper modules for this task.
 
 ## Verify step
@@ -53,15 +54,16 @@ curl -X POST http://localhost:8080/run/5
 curl -X POST http://localhost:8080/run/6
 ```
 
-Confirm each response includes the expected §7 Decision and a non-empty record hash, then verify the audit chain is intact using the T12 store verification path exposed or exercised by the T13 tests.
+Confirm each response includes the exact expected §7 Decision/control/approval-role outcome and a non-empty record hash, then verify the audit chain is intact using the real T12 `verify_chain()` path. The endpoint must be registered on the actual app served on port 8080, not only on a test-local FastAPI instance.
 
 Also add and run pytest coverage in `tests/T13_pipeline/` that verifies at minimum:
-- all six scenarios return the expected decision/control/approval role outcomes;
-- every scenario writes a record with a hash;
-- the audit chain verifies intact after the six runs;
+- all six normal-path scenarios use the real OPA/Rego path, not hardcoded or fake `decide` assertions;
+- endpoint-level coverage for `POST /run/1` through `POST /run/6` asserts the exact §7 decision/control/approval-role outcomes;
+- every scenario writes a record with a non-empty hash;
+- the audit chain verifies intact after the six endpoint/pipeline runs via the real T12 `verify_chain()` path;
 - payment Evidence has `evaluated=false`;
 - Scenario 5 flips from `escalate` to `allow_with_logging` when the threshold is lowered to `0.60`, if the existing settings/test infrastructure permits doing so without touching files outside T13 scope;
 - at least one fail-closed path writes a record.
 
 ## Handoff to Implementer
-You are the Implementer Agent. Read briefs/T13_architect_brief.md and briefs/T13_test_brief.md. Implement exactly T13. Touch only the allowed files above plus the test file specified in the Test Brief. Do not start any other task. Report changed files and verification result.
+You are the Implementer Agent. Read briefs/T13_architect_brief.md and briefs/T13_test_brief.md. Implement exactly T13. Touch only the allowed files above plus the test file specified in the Test Brief. Do not start any other task. Ensure `POST /run/{scenario_id}` is reachable on the real running FastAPI app for the ledger curl verification, not just in a test-local app. Report changed files and verification result, including the six curl commands and audit-chain verification.

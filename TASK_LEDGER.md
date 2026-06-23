@@ -4,9 +4,8 @@
 
 ## Current build state
 
-- Current task: T03
-- Last completed task: T02
-- Current branch: main
+- Current task: T04
+- Last completed task: T03
 - Known blockers: none
 
 ## How to use this ledger
@@ -75,7 +74,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 # PHASE 2 — Components
 
 ## T03 — Scenarios + agent simulator + SDK wrapper (PEP)
-- **Status:** To do
+- **Status:** Done
 - **Goal:** Encode the six scenarios (spec §7) as data; an agent simulator that emits a raw tool call per scenario; an SDK wrapper that **intercepts** the call and hands it to the pipeline entry point (pipeline itself comes in T13 — for now the wrapper calls a placeholder that echoes the raw call).
 - **Depends on:** T02
 - **Spec refs:** §7, §3 (PEP), §1 (interception is the headline)
@@ -86,6 +85,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** that execution genuinely cannot proceed without passing through the wrapper; planted content matches the §7 confidence expectations (0.88 / 0.62).
 
 ## T04 — Action normaliser
+- **Status:** To do
 - **Goal:** Convert each raw tool call into the canonical Action (spec §5.1), mapping tool names to `action_type` (`financial.payment.issue`, `communication.email.send`).
 - **Depends on:** T03
 - **Spec refs:** §5.1

@@ -1,3 +1,53 @@
+# Architect Brief — T09: OPA round-trip (prove the HTTP path before real policy)
+
+## Task selected
+- Task: T09 — OPA round-trip
+- Current status: TODO (moving to IN_PROGRESS)
+- Dependencies checked: PASS — T02 (schemas) DONE, T08 (settings store) DONE
+
+## Source-of-truth references
+- MASTER_SPEC.md: §3 (architecture), §4 (OPA technology choice), §5.4 (Decision schema), §6 (control library + framework mappings), §10 (file layout)
+- TASK_LEDGER.md: T09 definition
+- AGENTS.md: non-negotiable rules — decision comes from OPA not Python; only Python-made decision is `fail_closed` when OPA unreachable
+
+## Allowed files
+- `opa/data/controls.json`
+- `app/policy/opa_client.py`
+- `opa/policies/common.rego` (trivial version only — real logic is T10)
+- `tests/T09_opa_client/` (test subfolder)
+- `docker-compose.yml` (OPA volume mount for policies/data — currently missing)
+
+## Implementation objective
+
+Build three things:
+
+### 1. `opa/data/controls.json` — Control metadata
+Encode all seven controls from spec §6 as a JSON data file that OPA loads. Structure:
+
+```json
+{
+  "controls": {
+    "FIN-PAY-001": {
+      "id": "FIN-PAY-001",
+      "tier": "prohibited",
+      "decision": "block",
+      "description": "Fraud/sanctions/blocked customer — hard block",
+      "framework_mappings": [
+        "Internal Fraud & Financial Crime Policy",
+        "ISO/IEC 42001 (safe operation)",
+        "3 Lines of Defence (1st-line preventive control)"
+      ],
+      "required_approval_role": null,
+      "enabled": true
+    },
+    "FIN-PAY-002": {
+      "id": "FIN-PAY-002",
+      "tier": "escalate",
+      "decision": "escalate",
+      "description": "Payment over £500 without prior approval",
+      "framework_mappings": [
+        "Internal Delegated-Authority Policy",
+        "ISO/IEC 42001 (human oversight)",
         "Thematic: human decision over automated output"
       ],
       "required_approval_role": "finance_supervisor",

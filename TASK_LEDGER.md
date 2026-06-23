@@ -4,8 +4,8 @@
 
 ## Current build state
 
-- Current task: T07
-- Last completed task: T06
+- Current task: T08
+- Last completed task: T07
 - Known blockers: none
 
 ## How to use this ledger
@@ -118,7 +118,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** entities are genuinely from Presidio (not hardcoded); spans line up with the text.
 
 ## T07 — Nuance stub + evidence builder
-- **Status:** To do
+- **Status:** Done
 - **Goal:** A clearly-labelled stub nuance classifier (deterministic-by-input: planted phrases → fixed confidences 0.88 / 0.62 / low) and an evidence builder that assembles the full Evidence object (spec §5.3) from Presidio + stub.
 - **Depends on:** T06
 - **Spec refs:** §5.3, §7, §1B (labelling)
@@ -129,6 +129,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** confidences match §7 exactly; stub is unmistakably labelled; payment path skips semantics.
 
 ## T08 — Settings store (runtime-editable)
+- **Status:** To do
 - **Goal:** A DB-backed settings row holding `high_confidence_threshold` (default 0.75) and per-control mode (shadow/soft/full); read/update helpers.
 - **Depends on:** T01
 - **Spec refs:** §4 (settings), §6 (threshold), §8 (modes)

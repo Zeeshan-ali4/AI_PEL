@@ -1,4 +1,4 @@
-# Review Report — T05: Context resolver + fixtures
+# Review Report — T07: Nuance stub + evidence builder
 
 ## Verdict
 APPROVE
@@ -17,7 +17,7 @@ APPROVE
 ## Product invariant checks
 - Model is not judge: pass
 - OPA/PDP owns decisions: pass
-- Evidence has no decision fields: not applicable
+- Evidence has no decision fields: pass
 - Fail-closed preserved: pass
 - Append-only audit preserved: not applicable
 - Stubs labelled: pass
@@ -27,4 +27,4 @@ APPROVE
 1. None
 
 ## Non-blocking notes
-- Docker-based verification could not be run in this environment because the `docker` CLI is unavailable; the same pytest target and scenario-print verification were run locally and passed.
+- `docker compose run --rm app pytest -q tests/T07_evidence` could not be executed because Docker is not installed in this environment; the equivalent local pytest command passed, and the ledger's one-off evidence print command produced schema-valid Evidence for Scenarios 1–6.

@@ -4,8 +4,8 @@
 
 ## Current build state
 
-- Current task: T11
-- Last completed task: T10
+- Current task: T12
+- Last completed task: T11
 - Known blockers: none
 
 ## How to use this ledger
@@ -162,7 +162,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** precedence is correct (a flagged-fraud + over-£500 case still resolves to `block`); no decision logic leaked into Python; threshold is read from input, not hardcoded.
 
 ## T11 — Enforcement handler + approval queue (append-only)
-- **Status:** In_Progress
+- **Status:** Done
 - **Goal:** Apply a Decision under a mode (shadow/soft/full): determine `executed`; route `escalate` to an in-app approval queue with the `required_approval_role`. Approve/Reject **appends** a linked `approval_decision` record (no mutation).
 - **Depends on:** T10 (decisions to act on)
 - **Spec refs:** §8, §8A item 4, §5.5 (append-only)
@@ -173,6 +173,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** prohibited block does **not** go to the human queue (it's a hard stop); escalations do; shadow logic correct.
 
 ## T12 — Audit store + hash chain (tamper-evident)
+- **Status:** To do
 - **Goal:** SQLAlchemy model + store that writes append-only EvidenceRecords with SHA-256 hash chaining (spec §5.5), plus `verify_chain()` and a `simulate_tampering()` helper that alters a stored row in place (to demo breakage).
 - **Depends on:** T02, T01
 - **Spec refs:** §5.5, §8A items 5–6

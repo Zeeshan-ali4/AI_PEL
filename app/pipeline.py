@@ -15,6 +15,7 @@ from app.context import resolver as context_resolver
 from app.enforcement.approval_queue import ApprovalQueue
 from app.enforcement.handler import enforce
 from app.normaliser.normaliser import normalise
+from app.pep.sdk_wrapper import SDKWrapper
 from app.policy import opa_client
 from app.schemas.action import ActionType, EnforcementMode
 from app.schemas.audit import EvidenceRecord, RecordType
@@ -67,6 +68,7 @@ class PolicyPipeline:
     settings_store: SettingsStore = field(default_factory=SettingsStore)
     audit_store: AuditStore = field(default_factory=get_audit_store)
     approval_queue: ApprovalQueue = field(default_factory=ApprovalQueue)
+    sdk_wrapper: SDKWrapper = field(default_factory=SDKWrapper)
     opa_url: str | None = None
 
     def run_scenario(self, scenario_id: int) -> PipelineResult:
@@ -76,7 +78,8 @@ class PolicyPipeline:
             raw_tool_call = get_raw_tool_call(scenario_id)
         except ValueError as exc:
             raise UnknownScenarioError(str(exc)) from exc
-        return self.run_raw_tool_call(raw_tool_call)
+        intercepted_call = self.sdk_wrapper.call_tool(raw_tool_call)
+        return self.run_raw_tool_call(intercepted_call)
 
     def run_raw_tool_call(self, raw_tool_call: dict[str, Any]) -> PipelineResult:
         """Run one already-intercepted raw tool call through the pipeline."""

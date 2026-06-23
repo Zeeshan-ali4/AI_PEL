@@ -140,7 +140,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** persistence works; threshold is a single source consumed everywhere (no hard-coded 0.75 elsewhere).
 
 ## T09 — OPA round-trip (prove the HTTP path before real policy)
-- **Status:** To do
+- **Status:** IN_PROGRESS
 - **Goal:** `controls.json` (control metadata + framework mappings, spec §6); `opa_client.py` that POSTs `{action, context, evidence, config}` to OPA and parses a Decision; a **trivial** Rego policy that returns `allow` for everything, just to prove the round-trip.
 - **Depends on:** T02, T08
 - **Spec refs:** §6, §5.4, §3

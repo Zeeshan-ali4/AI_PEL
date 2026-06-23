@@ -7,8 +7,10 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
 from app.config import get_settings
+from app.web.routes import router as t13_router
 
 app = FastAPI(title="AI PEL Runtime Policy Enforcement Gate")
+app.include_router(t13_router)
 
 StatusValue = Literal["ok", "fail"]
 

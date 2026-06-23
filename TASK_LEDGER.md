@@ -4,8 +4,8 @@
 
 ## Current build state
 
-- Current task: T08
-- Last completed task: T07
+- Current task: T09
+- Last completed task: T08
 - Known blockers: none
 
 ## How to use this ledger
@@ -129,7 +129,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** confidences match §7 exactly; stub is unmistakably labelled; payment path skips semantics.
 
 ## T08 — Settings store (runtime-editable)
-- **Status:** To do
+- **Status:** Done
 - **Goal:** A DB-backed settings row holding `high_confidence_threshold` (default 0.75) and per-control mode (shadow/soft/full); read/update helpers.
 - **Depends on:** T01
 - **Spec refs:** §4 (settings), §6 (threshold), §8 (modes)
@@ -140,6 +140,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** persistence works; threshold is a single source consumed everywhere (no hard-coded 0.75 elsewhere).
 
 ## T09 — OPA round-trip (prove the HTTP path before real policy)
+- **Status:** To do
 - **Goal:** `controls.json` (control metadata + framework mappings, spec §6); `opa_client.py` that POSTs `{action, context, evidence, config}` to OPA and parses a Decision; a **trivial** Rego policy that returns `allow` for everything, just to prove the round-trip.
 - **Depends on:** T02, T08
 - **Spec refs:** §6, §5.4, §3

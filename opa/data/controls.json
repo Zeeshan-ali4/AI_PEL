@@ -1,0 +1,93 @@
+{
+  "controls": {
+    "FIN-PAY-001": {
+      "id": "FIN-PAY-001",
+      "tier": "prohibited",
+      "decision": "block",
+      "description": "Fraud/sanctions/blocked customer — hard block",
+      "framework_mappings": [
+        "Internal Fraud & Financial Crime Policy",
+        "ISO/IEC 42001 (safe operation)",
+        "3 Lines of Defence (1st-line preventive control)"
+      ],
+      "required_approval_role": null,
+      "enabled": true
+    },
+    "FIN-PAY-002": {
+      "id": "FIN-PAY-002",
+      "tier": "escalate",
+      "decision": "escalate",
+      "description": "Payment over £500 without prior approval",
+      "framework_mappings": [
+        "Internal Delegated-Authority Policy",
+        "ISO/IEC 42001 (human oversight)",
+        "Thematic: human decision over automated output"
+      ],
+      "required_approval_role": "finance_supervisor",
+      "enabled": true
+    },
+    "FIN-PAY-003": {
+      "id": "FIN-PAY-003",
+      "tier": "escalate",
+      "decision": "escalate",
+      "description": "Frequent payments (3+ in 30 days)",
+      "framework_mappings": [
+        "Counter-fraud monitoring control",
+        "ISO/IEC 42001"
+      ],
+      "required_approval_role": "fraud_analyst",
+      "enabled": true
+    },
+    "FIN-PAY-004": {
+      "id": "FIN-PAY-004",
+      "tier": "escalate",
+      "decision": "escalate",
+      "description": "Action affects individual financial standing",
+      "framework_mappings": [
+        "ISO/IEC 42001 (human oversight)",
+        "Thematic: human accountability + evidential reliability"
+      ],
+      "required_approval_role": "named_decision_maker",
+      "enabled": true,
+      "proposed": true
+    },
+    "COMM-EMAIL-001": {
+      "id": "COMM-EMAIL-001",
+      "tier": "escalate",
+      "decision": "escalate",
+      "description": "External email with special-category data, no disclosure basis",
+      "framework_mappings": [
+        "UK GDPR Art.9 / DPA 2018",
+        "Internal Data Disclosure Policy",
+        "ISO/IEC 42001 (data governance)"
+      ],
+      "required_approval_role": "data_protection_approver",
+      "enabled": true
+    },
+    "COMM-EMAIL-002": {
+      "id": "COMM-EMAIL-002",
+      "tier": "escalate",
+      "decision": "escalate",
+      "description": "External email with vulnerability indicators below confidence threshold",
+      "framework_mappings": [
+        "Internal Vulnerable-Customer Policy",
+        "ISO/IEC 42001 (human oversight)"
+      ],
+      "required_approval_role": "vulnerable_customer_team",
+      "enabled": true
+    },
+    "COMM-EMAIL-003": {
+      "id": "COMM-EMAIL-003",
+      "tier": "allow_with_logging",
+      "decision": "allow_with_logging",
+      "description": "External email with personal data (no special category)",
+      "framework_mappings": [
+        "UK GDPR Art.5(2) accountability",
+        "Internal Data Disclosure Policy",
+        "Record-keeping control RK-03"
+      ],
+      "required_approval_role": null,
+      "enabled": true
+    }
+  }
+}

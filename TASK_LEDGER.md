@@ -4,8 +4,8 @@
 
 ## Current build state
 
-- Current task: T13
-- Last completed task: T12
+- Current task: T14
+- Last completed task: T13
 - Known blockers: none
 
 ## How to use this ledger
@@ -184,7 +184,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** hashing is deterministic/canonical; normal write path cannot update rows; tamper helper is isolated and labelled.
 
 ## T13 — pipeline.py (INTEGRATION MILESTONE)
-- **Status:** To do
+- **Status:** Done
 - **Goal:** Wire the full loop per spec §11: intercept → normalise → resolve → (semantic if email) → load settings → OPA decide → enforce → write record. Expose a JSON endpoint `POST /run/{scenario_id}` returning the Decision + record hash.
 - **Depends on:** T03–T12
 - **Spec refs:** §11, §12
@@ -201,6 +201,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 > All UI tasks use FastAPI + Jinja2 + Tailwind CDN. Read `MASTER_SPEC.md` §8A before each. Tone: calm assurance dashboard, large readable type, every stub/illustrative element labelled. Consult `frontend-design` skill conventions.
 
 ## T14 — base.html + control dashboard (landing)
+- **Status:** To do
 - **Goal:** Shared layout; landing page listing all controls (ID, plain-English purpose, tier, current mode, framework chips, live counts), the enforcement-mode toggle, and the auditable-surface counter (spec §9).
 - **Depends on:** T13
 - **Spec refs:** §8A item 1, §9, §6

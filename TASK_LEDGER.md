@@ -4,8 +4,8 @@
 
 ## Current build state
 
-- Current task: T04
-- Last completed task: T03
+- Current task: T05
+- Last completed task: T04
 - Known blockers: none
 
 ## How to use this ledger
@@ -85,7 +85,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** that execution genuinely cannot proceed without passing through the wrapper; planted content matches the §7 confidence expectations (0.88 / 0.62).
 
 ## T04 — Action normaliser
-- **Status:** To do
+- **Status:** Done
 - **Goal:** Convert each raw tool call into the canonical Action (spec §5.1), mapping tool names to `action_type` (`financial.payment.issue`, `communication.email.send`).
 - **Depends on:** T03
 - **Spec refs:** §5.1
@@ -96,6 +96,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** correct action_type mapping; correlation_id present (everything downstream links on it).
 
 ## T05 — Context resolver + fixtures
+- **Status:** To do
 - **Goal:** Fake "enterprise systems" as fixtures; resolver returns a Context (spec §5.2) for a given Action. Includes CUST-100 (clean), CUST-300 (fraud_flag), recipients (external gmail, known partner), approval states.
 - **Depends on:** T04
 - **Spec refs:** §5.2, §7

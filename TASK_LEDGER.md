@@ -4,8 +4,8 @@
 
 ## Current build state
 
-- Current task: T05
-- Last completed task: T04
+- Current task: T06
+- Last completed task: T05
 - Known blockers: none
 
 ## How to use this ledger
@@ -96,7 +96,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** correct action_type mapping; correlation_id present (everything downstream links on it).
 
 ## T05 — Context resolver + fixtures
-- **Status:** To do
+- **Status:** Done
 - **Goal:** Fake "enterprise systems" as fixtures; resolver returns a Context (spec §5.2) for a given Action. Includes CUST-100 (clean), CUST-300 (fraud_flag), recipients (external gmail, known partner), approval states.
 - **Depends on:** T04
 - **Spec refs:** §5.2, §7
@@ -107,6 +107,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** fixtures actually drive the intended decisions; nothing real is being called.
 
 ## T06 — Presidio sensor (REAL)
+- **Status:** To do
 - **Goal:** A real `presidio-analyzer` sensor that detects PII/PHI in email bodies and returns entities + spans + scores. Add a custom recognizer for UK NHS number.
 - **Depends on:** T02 (+ T01 for the spaCy model in the image)
 - **Spec refs:** §5.3 (detected_entities, evidence_spans), §2 (deterministic first)

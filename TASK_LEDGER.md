@@ -162,7 +162,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** precedence is correct (a flagged-fraud + over-£500 case still resolves to `block`); no decision logic leaked into Python; threshold is read from input, not hardcoded.
 
 ## T11 — Enforcement handler + approval queue (append-only)
-- **Status:** To do
+- **Status:** In_Progress
 - **Goal:** Apply a Decision under a mode (shadow/soft/full): determine `executed`; route `escalate` to an in-app approval queue with the `required_approval_role`. Approve/Reject **appends** a linked `approval_decision` record (no mutation).
 - **Depends on:** T10 (decisions to act on)
 - **Spec refs:** §8, §8A item 4, §5.5 (append-only)

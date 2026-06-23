@@ -20,9 +20,12 @@ services:
   opa:
     image: openpolicyagent/opa:latest
     container_name: ai_pel_opa
-    command: ["run", "--server", "--addr=0.0.0.0:8181"]
+    command: ["run", "--server", "--addr=0.0.0.0:8181", "/policies", "/data"]
     ports:
       - "8181:8181"
+    volumes:
+      - ./opa/policies:/policies:ro
+      - ./opa/data:/data:ro
 
   postgres:
     image: postgres:15

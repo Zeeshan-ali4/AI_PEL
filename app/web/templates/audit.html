@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Audit log & integrity — AI PEL Assurance Gate{% endblock %}
+
+{% block content %}
+<a href="/" class="text-sm text-slate-500 hover:text-slate-900">&larr; Back to control dashboard</a>
+
+<section class="mt-4 mb-8">
+  <h1 class="text-2xl font-semibold">Audit log &amp; chain integrity</h1>
+  <p class="mt-2 text-sm text-slate-600">
+    Every proposed action and binding decision is written here as an append-only,
+    hash-chained record. Nothing in normal operation edits or deletes a row — each
+    record links to the one before it by hash, so any alteration after the fact is
+    detectable. The two actions below prove that, live.
+  </p>
+</section>
+
+{% if verify_result == "intact" %}
+<section class="mb-6 rounded-xl border border-emerald-300 bg-emerald-50 p-6 text-emerald-900">
+  <p class="text-lg font-semibold">Chain intact</p>
+  <p class="mt-1 text-sm">
+    {{ verified_count }} record{{ "s" if verified_count != 1 else "" }} verified — every
+    hash and link matches what was originally written.
+  </p>
+</section>
+{% elif verify_result == "broken" %}
+<section class="mb-6 rounded-xl border border-rose-400 bg-rose-50 p-6 text-rose-900">
+  <p class="text-lg font-semibold">Chain broken — tampering detected</p>
+  <p class="mt-1 text-sm">
+    Verified {{ verified_count }} record{{ "s" if verified_count != 1 else "" }} before the
+    break. The exact record that fails verification is
+    <span class="font-mono font-semibold">id {{ broken_record_id }}</span>.
+  </p>
+  <p class="mt-1 text-sm">Reason: {{ broken_reason }}</p>
+  {% if tampered %}
+  <p class="mt-2 text-xs text-rose-800">
+    This is the result of the demo-only Simulate Tampering action just run against
+    record id {{ tampered }}.
+  </p>
+  {% endif %}
+</section>
+{% endif %}
+
+<section class="mb-10 rounded-xl border border-slate-200 bg-white p-6">
+  <h2 class="text-lg font-semibold">Verify chain</h2>
+  <p class="mt-1 text-sm text-slate-600">
+    Recomputes every record's hash and prev-hash linkage from scratch and reports
+    whether the stored chain still matches.
+  </p>
+  <form method="post" action="/audit/verify" class="mt-3">
+    <button
+      type="submit"
+      class="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+    >
+      Verify chain
+    </button>
+  </form>
+</section>
+
+<section class="mb-10 rounded-xl border border-rose-200 bg-rose-50/40 p-6">
+  <h2 class="text-lg font-semibold text-rose-900">Simulate tampering (demo only)</h2>
+  <p class="mt-1 text-sm text-rose-800">
+    This is <strong>not</strong> a normal audit operation. It deliberately alters one
+    stored row in place — something the application never does during real use — so
+    you can watch "Verify chain" catch it. Pick a record id from the table below.
+  </p>
+  {% if not has_records %}
+  <p class="mt-3 text-sm text-rose-700">
+    There are no audit records yet to tamper with. Run a scenario from the
+    <a href="/scenarios" class="underline">scenario runner</a> first.
+  </p>
+  {% else %}
+  <form method="post" action="/audit/simulate-tampering" class="mt-3 flex items-center gap-3">
+    <label class="text-sm text-rose-900" for="tamper-record-id">Record id</label>
+    <input
+      id="tamper-record-id"
+      type="number"
+      name="record_id"
+      required
+      min="1"
+      class="w-24 rounded-md border border-rose-300 p-2 text-sm"
+      value="{{ rows[0].id if rows else '' }}"
+    >
+    <button
+      type="submit"
+      class="rounded-md border border-rose-400 bg-rose-100 px-4 py-2 text-sm font-medium text-rose-900 hover:bg-rose-200"
+    >
+      Simulate tampering on this record
+    </button>
+  </form>
+  {% endif %}
+</section>
+
+<section class="rounded-xl border border-slate-200 bg-white p-6">
+  <h2 class="text-lg font-semibold">Chronological audit records</h2>
+
+  {% if not rows %}
+  <p class="mt-3 text-sm text-slate-500">
+    No audit records yet. Run any of the
+    <a href="/scenarios" class="underline">six demo scenarios</a> to populate this
+    log — every run, allowed or blocked, writes a record here.
+  </p>
+  {% else %}
+  <div class="mt-4 overflow-x-auto">
+    <table class="w-full text-left text-sm">
+      <thead class="text-xs uppercase tracking-wide text-slate-500">
+        <tr>
+          <th class="py-2 pr-3">ID</th>
+          <th class="py-2 pr-3">Created</th>
+          <th class="py-2 pr-3">Type</th>
+          <th class="py-2 pr-3">Correlation ID</th>
+          <th class="py-2 pr-3">Decision</th>
+          <th class="py-2 pr-3">Executed</th>
+          <th class="py-2 pr-3">record_hash</th>
+          <th class="py-2 pr-3">prev_hash</th>
+          <th class="py-2 pr-3">Record</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for row in rows %}
+        <tr class="{{ 'bg-rose-50' if broken_record_id == row.id else '' }}">
+          <td class="py-2 pr-3 font-mono">{{ row.id }}</td>
+          <td class="py-2 pr-3">{{ row.created_at }}</td>
+          <td class="py-2 pr-3">{{ row.record_type }}</td>
+          <td class="py-2 pr-3 font-mono text-xs">{{ row.correlation_id }}</td>
+          <td class="py-2 pr-3">{{ row.decision }}</td>
+          <td class="py-2 pr-3">{{ row.executed }}</td>
+          <td class="py-2 pr-3 font-mono text-xs" title="{{ row.record_hash }}">{{ row.record_hash[:12] }}&hellip;</td>
+          <td class="py-2 pr-3 font-mono text-xs" title="{{ row.prev_hash }}">{{ row.prev_hash[:12] }}&hellip;</td>
+          <td class="py-2 pr-3">
+            <a href="/records/{{ row.record_hash }}" class="underline">View</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

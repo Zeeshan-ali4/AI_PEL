@@ -4,8 +4,8 @@
 
 ## Current build state
 
-- Current task: T17
-- Last completed task: T16
+- Current task: T18
+- Last completed task: T17
 - Known blockers: none
 
 ## How to use this ledger
@@ -231,7 +231,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** original record is **not** mutated; reason is mandatory; correlation/reference linkage correct.
 
 ## T17 — Evidence record view + export
-- **Status:** Review
+- **Status:** Done
 - **Goal:** Full single-record view (readable + printable) with `record_hash`, `prev_hash`, approver, reason, execution status; **"Export for audit"** producing JSON + a human-readable file.
 - **Depends on:** T14
 - **Spec refs:** §8A item 5
@@ -241,6 +241,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** the export is genuinely readable by a risk reviewer, not a raw dump.
 
 ## T18 — Audit log + verify chain + simulate tampering (headline moment)
+- **Status:** To do
 - **Goal:** Chronological record list; **"Verify chain"** (intact + count, or names the broken record); **"Simulate tampering"** alters a row and re-verifies to show breakage and the exact failing record.
 - **Depends on:** T12, T14
 - **Spec refs:** §8A item 6, §5.5
@@ -276,7 +277,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Depends on:** T19, T20
 - **Spec refs:** §1, §1A, §1B, §7, §9
 - **Files:** `README.md` (final), `DEMO_SCRIPT.md`
-- **Done when:** a stranger can `docker compose up` and run the demo from the script alone; the narration leads with assurance value, not the scandal.
+- **Done when:** a stranger can `docker compose up` and run the demo from the script alone; the narration leads with assurance value.
 - **Verify:** follow your own README on a clean checkout; run the demo from the script.
 - **Reviewer focus:** the "what's real vs stubbed" honesty list is present; demo script tone is right for the room.
 

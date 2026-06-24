@@ -14,7 +14,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.pipeline import PipelineResult, UnknownScenarioError, get_pipeline
 from app.schemas.action import Action, ActionType
-from app.schemas.audit import RecordType
+from app.schemas.audit import EvidenceRecord, RecordType
 from app.schemas.context import Context
 from app.schemas.decision import Decision, DecisionValue
 from app.schemas.evidence import Evidence
@@ -52,6 +52,10 @@ AGENT_STEPS_PER_RUN = 14
 # Stable link target for the human approval queue. The page itself lands in T16;
 # T15 only needs the escalation routing to point somewhere stable.
 APPROVAL_QUEUE_PATH = "/approvals"
+
+# Stable demo default used when an approver identity is not supplied on the
+# approval form (spec §8A item 4 only requires the identity be populated).
+DEFAULT_HUMAN_APPROVER = "demo.named.approver@postoffice.example"
 
 # Plain-English, board-readable summaries for the scenario runner cards (spec §8A item 2).
 # These do not alter scenario data or expected outcomes (scenarios/scenarios.py remains
@@ -318,3 +322,153 @@ def _build_decision_view_context(scenario_id: int, result: PipelineResult) -> di
         "would_have": outcome.would_have,
         "queued": outcome.queued,
     }
+
+
+def _find_action_evaluation_record(
+    records: list[EvidenceRecord], correlation_id: str | None
+) -> EvidenceRecord | None:
+    """Find the original `action_evaluation` audit row a queued item escalated from."""
+
+    if correlation_id is None:
+        return None
+    matches = [
+        record
+        for record in records
+        if record.record_type == RecordType.ACTION_EVALUATION
+        and str(record.correlation_id) == correlation_id
+    ]
+    return matches[-1] if matches else None
+
+
+def _action_summary(action: Action) -> str:
+    """A short, board-readable summary of the proposed action for the approval queue."""
+
+    if action.action_type == ActionType.FINANCIAL_PAYMENT_ISSUE:
+        amount = action.parameters.get("amount_gbp")
+        return f"Payment of £{amount} to customer {action.resource.id}"
+    return f"Email to {action.recipient or 'an external recipient'} regarding customer {action.resource.id}"
+
+
+def _build_pending_rows(pipeline, records: list[EvidenceRecord]) -> list[dict[str, Any]]:
+    rows = []
+    for item in pipeline.approval_queue.list_pending():
+        original = _find_action_evaluation_record(records, item.correlation_id)
+        rows.append(
+            {
+                "item_id": item.item_id,
+                "required_approval_role": item.required_approval_role,
+                "control_id": item.control_id,
+                "reason": item.reason,
+                "summary": _action_summary(original.action) if original else "Action details unavailable.",
+                "original_record_hash": original.record_hash if original else None,
+            }
+        )
+    return rows
+
+
+def _build_actioned_rows(records: list[EvidenceRecord]) -> list[dict[str, Any]]:
+    """Actioned escalations, read from the append-only audit trail (spec §5.5)."""
+
+    rows = []
+    by_hash = {record.record_hash: record for record in records}
+    for record in records:
+        if record.record_type != RecordType.APPROVAL_DECISION:
+            continue
+        original = by_hash.get(record.references_hash)
+        rows.append(
+            {
+                "correlation_id": str(record.correlation_id),
+                "approved": record.executed,
+                "human_approver": record.human_approver,
+                "approval_reason": record.approval_reason,
+                "control_id": original.decision.control_id if original else None,
+                "summary": _action_summary(original.action) if original else "Action details unavailable.",
+                "record_hash": record.record_hash,
+                "references_hash": record.references_hash,
+            }
+        )
+    return rows
+
+
+@router.get("/approvals", response_class=HTMLResponse)
+def approvals_page(request: Request, actioned_item: str | None = None, error: str | None = None) -> HTMLResponse:
+    """Render the human approval queue: pending escalations plus the actioned trail (spec §8A item 4)."""
+
+    pipeline = get_pipeline()
+    records = pipeline.audit_store.read_records()
+    return templates.TemplateResponse(
+        request,
+        "approvals.html",
+        {
+            "pending_rows": _build_pending_rows(pipeline, records),
+            "actioned_rows": _build_actioned_rows(records),
+            "actioned_item": actioned_item,
+            "error": error,
+        },
+    )
+
+
+@router.post("/approvals/{item_id}/decide")
+def decide_approval(
+    item_id: str,
+    decision: str = Form(...),
+    reason: str = Form(""),
+    human_approver: str = Form(""),
+) -> RedirectResponse:
+    """Action one pending escalation by appending a linked `approval_decision` record.
+
+    The original `action_evaluation` audit row is never mutated — this only ever
+    calls `AuditStore.write_record` to append a new row (spec §5.5).
+    """
+
+    if decision not in ("approve", "reject"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid decision: {decision!r}")
+
+    pipeline = get_pipeline()
+    queue_item = pipeline.approval_queue.get(item_id)
+    if queue_item is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Unknown approval item: {item_id}")
+
+    cleaned_reason = reason.strip()
+    if not cleaned_reason:
+        return RedirectResponse(
+            url=f"{APPROVAL_QUEUE_PATH}?error=A+reason+is+required+to+approve+or+reject+this+escalation.",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    records = pipeline.audit_store.read_records()
+    original = _find_action_evaluation_record(records, queue_item.correlation_id)
+    if original is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Original action_evaluation record not found for this approval item.",
+        )
+
+    approved = decision == "approve"
+    approver = human_approver.strip() or DEFAULT_HUMAN_APPROVER
+
+    pipeline.approval_queue.record_approval_decision(
+        item_id=item_id,
+        approved=approved,
+        human_approver=approver,
+        reason=cleaned_reason,
+    )
+
+    appended = pipeline.audit_store.write_record(
+        action=original.action,
+        context_used=original.context_used,
+        evidence=original.evidence,
+        decision=original.decision,
+        enforcement_mode=original.enforcement_mode,
+        executed=approved,
+        record_type=RecordType.APPROVAL_DECISION,
+        references_hash=original.record_hash,
+        human_approver=approver,
+        approval_reason=cleaned_reason,
+        correlation_id=original.correlation_id,
+    )
+
+    return RedirectResponse(
+        url=f"{APPROVAL_QUEUE_PATH}?actioned_item={appended.record_hash}",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )

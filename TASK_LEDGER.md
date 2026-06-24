@@ -231,7 +231,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** original record is **not** mutated; reason is mandatory; correlation/reference linkage correct.
 
 ## T17 — Evidence record view + export
-- **Status:** To do
+- **Status:** Review
 - **Goal:** Full single-record view (readable + printable) with `record_hash`, `prev_hash`, approver, reason, execution status; **"Export for audit"** producing JSON + a human-readable file.
 - **Depends on:** T14
 - **Spec refs:** §8A item 5

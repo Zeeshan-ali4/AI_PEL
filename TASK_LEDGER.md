@@ -4,8 +4,8 @@
 
 ## Current build state
 
-- Current task: T18
-- Last completed task: T17
+- Current task: T19
+- Last completed task: T18
 - Known blockers: none
 
 ## How to use this ledger
@@ -241,7 +241,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** the export is genuinely readable by a risk reviewer, not a raw dump.
 
 ## T18 — Audit log + verify chain + simulate tampering (headline moment)
-- **Status:** To do
+- **Status:** Done
 - **Goal:** Chronological record list; **"Verify chain"** (intact + count, or names the broken record); **"Simulate tampering"** alters a row and re-verifies to show breakage and the exact failing record.
 - **Depends on:** T12, T14
 - **Spec refs:** §8A item 6, §5.5
@@ -264,6 +264,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 # PHASE 4 — Verify & present
 
 ## T20 — Test suite
+- **Status:** To do
 - **Goal:** The four test files (spec §10): normaliser mapping; Presidio detection on the planted bodies; **policy decisions per scenario** (each of the six → expected §7 decision); audit chain integrity + tamper detection.
 - **Depends on:** T13 (logic complete)
 - **Spec refs:** §10, §12, §7

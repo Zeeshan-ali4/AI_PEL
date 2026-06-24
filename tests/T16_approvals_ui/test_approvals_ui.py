@@ -198,11 +198,11 @@ def test_approval_view_does_not_invoke_or_reclassify_semantic_evidence_for_payme
         follow_redirects=False,
     )
 
-    records = wired_pipeline.audit_store.read_records()
-    refreshed_original = _action_evaluation_records(records)[0]
+    refreshed_original = _action_evaluation_records(wired_pipeline.audit_store)[0]
     assert refreshed_original.evidence.evaluated is False
     assert refreshed_original.evidence.model_dump(mode="json") == original.evidence.model_dump(mode="json")
 
+    records = wired_pipeline.audit_store.read_records()
     approval_record = next(r for r in records if r.record_type == RecordType.APPROVAL_DECISION)
     assert approval_record.evidence.evaluated is False
     assert not hasattr(approval_record.evidence, "decision")

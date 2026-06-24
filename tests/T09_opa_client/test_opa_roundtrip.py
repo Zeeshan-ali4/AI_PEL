@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 import httpx
 import pytest
 
-from app.policy.opa_client import OPA_POLICY_PATH, _build_input, decide
+from app.policy.opa_client import _build_input, decide
 from app.schemas.action import Action
 from app.schemas.context import Context
 from app.schemas.decision import Decision

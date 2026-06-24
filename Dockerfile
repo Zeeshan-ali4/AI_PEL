@@ -10,6 +10,7 @@ RUN pip install --no-cache-dir -r requirements.txt \
     && python -m spacy download en_core_web_sm
 
 COPY app ./app
+COPY opa ./opa
 
 RUN useradd --create-home --shell /usr/sbin/nologin appuser \
     && chown -R appuser:appuser /app

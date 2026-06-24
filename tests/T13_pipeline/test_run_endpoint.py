@@ -5,12 +5,11 @@ from fastapi.testclient import TestClient
 import app.pipeline as pipeline_module
 from app.audit.store import AuditStore
 from app.main import app
-from app.pipeline import PolicyPipeline
 from app.settings_store import SettingsStore
 
 
 def test_post_run_endpoint_returns_decision_and_record_hash_for_all_scenarios(tmp_path, monkeypatch, opa_url):
-    pipe = PolicyPipeline(
+    pipe = pipeline_module.PolicyPipeline(
         settings_store=SettingsStore(f"sqlite:///{tmp_path / 'settings.db'}"),
         audit_store=AuditStore(f"sqlite:///{tmp_path / 'audit.db'}"),
         opa_url=opa_url,
@@ -49,7 +48,7 @@ def test_post_run_endpoint_returns_decision_and_record_hash_for_all_scenarios(tm
 
 
 def test_post_run_rejects_unknown_scenario_without_audit_record(tmp_path, monkeypatch):
-    pipe = PolicyPipeline(
+    pipe = pipeline_module.PolicyPipeline(
         settings_store=SettingsStore(f"sqlite:///{tmp_path / 'settings.db'}"),
         audit_store=AuditStore(f"sqlite:///{tmp_path / 'audit.db'}"),
     )

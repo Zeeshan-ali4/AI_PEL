@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Control dashboard — AI PEL Assurance Gate{% endblock %}
+
+{% block content %}
+<section class="mb-8">
+  <h1 class="text-3xl font-semibold tracking-tight">Control dashboard</h1>
+  <p class="mt-2 max-w-2xl text-slate-600">
+    Every control the gate enforces, the framework it answers to, the mode it currently runs in, and the
+    live counts of decisions it has produced. This is the board-ready view of the policy gate.
+  </p>
+</section>
+
+<section id="auditable-surface" class="mb-8 rounded-xl border border-slate-200 bg-white p-6">
+  <h2 class="text-lg font-semibold">Auditable surface</h2>
+  <p class="mt-2 text-slate-700">
+    This session: <strong>{{ agent_steps_total }} agent steps</strong> (illustrative, simulated), and
+    <strong>{{ gated_total }} consequential action{{ "s" if gated_total != 1 else "" }} gated and fully
+    evidenced</strong>.
+  </p>
+  <p class="mt-2 text-sm text-slate-500">
+    The gate logs proposed consequential actions and the binding decisions on them — this is the
+    auditable surface, not a complete, unauditable agent transcript. Full-transcript logging would store
+    many times more data with no added assurance of control.
+  </p>
+</section>
+
+<section id="enforcement-mode" class="mb-8 rounded-xl border border-slate-200 bg-white p-6">
+  <h2 class="text-lg font-semibold">Enforcement mode</h2>
+  <p class="mt-2 text-sm text-slate-500">
+    Sets every control listed below to the same mode. Risk owns this switch, not engineering.
+  </p>
+  {# nosemgrep: python.django.security.django-no-csrf-token.django-no-csrf-token -- FastAPI app, not Django; no session/cookie auth backs this unauthenticated demo endpoint, so a CSRF token would have nothing to validate against #}
+  <form method="post" action="/mode" class="mt-4 flex flex-wrap items-center gap-3">
+    {% for mode in valid_modes %}
+    <label class="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm">
+      <input type="radio" name="mode" value="{{ mode }}">
+      <span class="capitalize">{{ mode }}</span>
+    </label>
+    {% endfor %}
+    <button type="submit" class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white">
+      Apply mode
+    </button>
+  </form>
+</section>
+
+<section id="controls">
+  <h2 class="text-lg font-semibold mb-3">Controls</h2>
+  <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+    <table class="min-w-full divide-y divide-slate-200 text-sm">
+      <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+        <tr>
+          <th class="px-4 py-3">Control</th>
+          <th class="px-4 py-3">Purpose</th>
+          <th class="px-4 py-3">Tier</th>
+          <th class="px-4 py-3">Current mode</th>
+          <th class="px-4 py-3">Framework mappings (illustrative)</th>
+          <th class="px-4 py-3">Allowed</th>
+          <th class="px-4 py-3">Escalated</th>
+          <th class="px-4 py-3">Blocked</th>
+          <th class="px-4 py-3">Logged</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for row in rows %}
+        <tr>
+          <td class="px-4 py-3 font-mono text-xs">{{ row.id }}</td>
+          <td class="px-4 py-3">{{ row.description }}</td>
+          <td class="px-4 py-3">{{ row.tier_label }}</td>
+          <td class="px-4 py-3 capitalize">{{ row.mode }}</td>
+          <td class="px-4 py-3">
+            <div class="flex flex-wrap gap-1">
+              {% for mapping in row.framework_mappings %}
+              <span class="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-700">{{ mapping }}</span>
+              {% endfor %}
+            </div>
+          </td>
+          <td class="px-4 py-3 text-center">{{ row.counts.allowed }}</td>
+          <td class="px-4 py-3 text-center">{{ row.counts.escalated }}</td>
+          <td class="px-4 py-3 text-center">{{ row.counts.blocked }}</td>
+          <td class="px-4 py-3 text-center">{{ row.counts.logged }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

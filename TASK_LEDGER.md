@@ -201,7 +201,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 > All UI tasks use FastAPI + Jinja2 + Tailwind CDN. Read `MASTER_SPEC.md` §8A before each. Tone: calm assurance dashboard, large readable type, every stub/illustrative element labelled. Consult `frontend-design` skill conventions.
 
 ## T14 — base.html + control dashboard (landing)
-- **Status:** To do
+- **Status:** REVIEW
 - **Goal:** Shared layout; landing page listing all controls (ID, plain-English purpose, tier, current mode, framework chips, live counts), the enforcement-mode toggle, and the auditable-surface counter (spec §9).
 - **Depends on:** T13
 - **Spec refs:** §8A item 1, §9, §6

@@ -201,7 +201,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 > All UI tasks use FastAPI + Jinja2 + Tailwind CDN. Read `MASTER_SPEC.md` §8A before each. Tone: calm assurance dashboard, large readable type, every stub/illustrative element labelled. Consult `frontend-design` skill conventions.
 
 ## T14 — base.html + control dashboard (landing)
-- **Status:** REVIEW
+- **Status:** Done
 - **Goal:** Shared layout; landing page listing all controls (ID, plain-English purpose, tier, current mode, framework chips, live counts), the enforcement-mode toggle, and the auditable-surface counter (spec §9).
 - **Depends on:** T13
 - **Spec refs:** §8A item 1, §9, §6
@@ -211,6 +211,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** this reads like something shown to a board; framework chips match §6; counts are real.
 
 ## T15 — Scenario runner + decision view
+- **Status:** To do
 - **Goal:** Six scenario cards with "Run"; result page showing the decision (colour + plain reason), triggering control + framework chips, resolved context, the **evidence panel** (real Presidio entities with highlighted spans; labelled stub confidence; `threshold_used`), and — if escalated — a prominent "Sent to {role}" state linking to approvals.
 - **Depends on:** T14
 - **Spec refs:** §8A items 2–3, §7

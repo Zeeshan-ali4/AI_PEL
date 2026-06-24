@@ -56,7 +56,7 @@ APPROVAL_QUEUE_PATH = "/approvals"
 
 # Stable demo default used when an approver identity is not supplied on the
 # approval form (spec §8A item 4 only requires the identity be populated).
-DEFAULT_HUMAN_APPROVER = "demo.named.approver@postoffice.example"
+DEFAULT_HUMAN_APPROVER = "demo.named.approver@internal.example"
 
 # Plain-English, board-readable summaries for the scenario runner cards (spec §8A item 2).
 # These do not alter scenario data or expected outcomes (scenarios/scenarios.py remains

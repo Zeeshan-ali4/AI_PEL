@@ -61,7 +61,7 @@ def test_approval_decision_record_page_shows_approver_reason_execution_and_refer
         data={
             "decision": "approve",
             "reason": "Customer remediation approved by finance supervisor",
-            "human_approver": "j.smith@postoffice.example",
+            "human_approver": "j.smith@internal.example",
         },
         follow_redirects=False,
     )
@@ -78,7 +78,7 @@ def test_approval_decision_record_page_shows_approver_reason_execution_and_refer
     assert approval.record_hash in body
     assert approval.prev_hash in body
     assert original.record_hash in body  # references_hash to the original
-    assert "j.smith@postoffice.example" in body
+    assert "j.smith@internal.example" in body
     assert "Customer remediation approved by finance supervisor" in body
     assert "appended" in body.lower()
 

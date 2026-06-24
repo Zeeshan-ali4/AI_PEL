@@ -87,7 +87,7 @@ def test_approve_with_reason_appends_linked_approval_decision_and_marks_item_act
         data={
             "decision": "approve",
             "reason": "Customer remediation approved by finance supervisor",
-            "human_approver": "j.smith@postoffice.example",
+            "human_approver": "j.smith@internal.example",
         },
         follow_redirects=False,
     )
@@ -100,7 +100,7 @@ def test_approve_with_reason_appends_linked_approval_decision_and_marks_item_act
 
     assert approval.correlation_id == original.correlation_id
     assert approval.references_hash == original.record_hash
-    assert approval.human_approver == "j.smith@postoffice.example"
+    assert approval.human_approver == "j.smith@internal.example"
     assert approval.approval_reason == "Customer remediation approved by finance supervisor"
     assert approval.executed is True
 

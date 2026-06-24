@@ -251,7 +251,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** give this room visually — it is the most resonant moment for this buyer; make breakage unmistakable.
 
 ## T19 — Settings page (DEMO-READY milestone)
-- **Status:** To do
+- **Status:** Review
 - **Goal:** Editable confidence threshold with a **live impact panel** ("At 0.75, Scenario 5 (0.62) escalates; lower to 0.60 and it would allow-with-logging"); editable per-control mode; changes persist and take effect immediately.
 - **Depends on:** T08, T15
 - **Spec refs:** §8A item 7, §6

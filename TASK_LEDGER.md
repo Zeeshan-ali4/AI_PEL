@@ -4,7 +4,7 @@
 
 ## Current build state
 
-- Current task: T20
+- Current task: T20 and T21
 - Last completed task: T19
 - Known blockers: none
 

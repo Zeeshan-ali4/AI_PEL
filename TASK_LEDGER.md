@@ -277,7 +277,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 ## T21 — README + demo script (narration)
 - **Status:** To do
 - **Goal:** README: what it is, how to run (`docker compose up`), the architecture in a paragraph, and the explicit list of what's real vs stubbed (spec §1). Plus a **demo script** — the spoken narration for the six scenarios + the tamper moment + the threshold change, written for the Head-of-Assurance audience, honouring §1B (no Horizon as a hook).
-- **Depends on:** T19, T20
+- **Depends on:** T19
 - **Spec refs:** §1, §1A, §1B, §7, §9
 - **Files:** `README.md` (final), `DEMO_SCRIPT.md`
 - **Done when:** a stranger can `docker compose up` and run the demo from the script alone; the narration leads with assurance value.

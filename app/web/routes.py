@@ -14,14 +14,19 @@ from fastapi import APIRouter, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
+from app.context import resolver as context_resolver
+from app.normaliser.normaliser import normalise
 from app.pipeline import PipelineResult, UnknownScenarioError, get_pipeline
+from app.policy import opa_client
 from app.schemas.action import Action, ActionType
 from app.schemas.audit import EvidenceRecord, RecordType
 from app.schemas.context import Context
 from app.schemas.decision import Decision, DecisionValue
 from app.schemas.evidence import Evidence
+from app.semantic import evidence_builder
+from app.semantic.nuance_stub import SCENARIO_5_CONFIDENCE
 from app.settings_store import VALID_ENFORCEMENT_MODES
-from scenarios.scenarios import get_scenarios
+from scenarios.scenarios import get_raw_tool_call, get_scenarios
 
 router = APIRouter()
 
@@ -637,3 +642,115 @@ def simulate_audit_tampering(record_id: int = Form(...)) -> RedirectResponse:
             f"&tampered={record_id}"
         )
     return RedirectResponse(url=url, status_code=status.HTTP_303_SEE_OTHER)
+
+
+# Spec §8A item 7's worked example: at the 0.75 default, Scenario 5's fixed 0.62
+# nuance confidence escalates; lowering to 0.60 flips it to allow-with-logging.
+# This is only the *default comparison point* shown in the impact panel — the
+# panel recomputes live through the real OPA path, it never hardcodes the answer.
+DEFAULT_PREVIEW_THRESHOLD = 0.60
+IMPACT_SCENARIO_ID = 5
+
+
+def _scenario_5_decision_preview(threshold: float, control_modes: dict[str, str]) -> Decision:
+    """Recompute Scenario 5's binding decision at a hypothetical threshold.
+
+    Reuses the real normaliser/context-resolver/evidence-builder/OPA path so the
+    Settings page never becomes a second, hand-rolled source of policy logic —
+    it is a read-only preview and writes nothing to the audit store.
+    """
+
+    pipeline = get_pipeline()
+    raw_tool_call = get_raw_tool_call(IMPACT_SCENARIO_ID)
+    intercepted_call = pipeline.sdk_wrapper.call_tool(raw_tool_call)
+    action = normalise(intercepted_call)
+    context = context_resolver.resolve(action)
+    evidence = evidence_builder.build_evidence(action)
+    config = {"high_confidence_threshold": threshold, "control_modes": dict(control_modes)}
+    return opa_client.decide(action, context, evidence, config, opa_url=pipeline.opa_url)
+
+
+def _build_impact_panel(threshold: float, preview_threshold: float, control_modes: dict[str, str]) -> dict[str, Any]:
+    """Build the live Scenario 5 impact panel comparing the current vs. a preview threshold."""
+
+    current_decision = _scenario_5_decision_preview(threshold, control_modes)
+    preview_decision = _scenario_5_decision_preview(preview_threshold, control_modes)
+    return {
+        "stub_confidence": SCENARIO_5_CONFIDENCE,
+        "current_threshold": threshold,
+        "current_decision": current_decision.decision.value,
+        "current_label": DECISION_DISPLAY.get(current_decision.decision.value, {"label": current_decision.decision.value})["label"],
+        "preview_threshold": preview_threshold,
+        "preview_decision": preview_decision.decision.value,
+        "preview_label": DECISION_DISPLAY.get(preview_decision.decision.value, {"label": preview_decision.decision.value})["label"],
+        "would_change": current_decision.decision.value != preview_decision.decision.value,
+    }
+
+
+@router.get("/settings", response_class=HTMLResponse)
+def settings_page(
+    request: Request,
+    preview_threshold: float | None = None,
+    saved: str | None = None,
+    error: str | None = None,
+) -> HTMLResponse:
+    """Render the runtime Settings page: threshold, per-control modes, and the
+    live Scenario 5 impact panel (spec §8A item 7)."""
+
+    pipeline = get_pipeline()
+    settings = pipeline.settings_store.read_settings()
+    controls = _load_enabled_controls()
+    chosen_preview = preview_threshold if preview_threshold is not None else DEFAULT_PREVIEW_THRESHOLD
+
+    control_rows = [
+        {
+            "id": control_id,
+            "description": control["description"],
+            "mode": settings.control_modes.get(control_id, "shadow"),
+        }
+        for control_id, control in sorted(controls.items())
+    ]
+
+    return templates.TemplateResponse(
+        request,
+        "settings.html",
+        {
+            "threshold": settings.high_confidence_threshold,
+            "control_rows": control_rows,
+            "valid_modes": sorted(VALID_ENFORCEMENT_MODES),
+            "preview_threshold": chosen_preview,
+            "impact": _build_impact_panel(settings.high_confidence_threshold, chosen_preview, settings.control_modes),
+            "saved": saved,
+            "error": error,
+        },
+    )
+
+
+@router.post("/settings/threshold")
+def update_threshold(threshold: float = Form(...)) -> RedirectResponse:
+    """Persist a new high-confidence threshold; it governs the very next run (no restart)."""
+
+    if not (0.0 <= threshold <= 1.0):
+        return RedirectResponse(
+            url="/settings?error=Threshold+must+be+between+0+and+1.",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+    get_pipeline().settings_store.update_threshold(threshold)
+    return RedirectResponse(url="/settings?saved=threshold", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/settings/control-mode")
+def update_control_mode(control_id: str = Form(...), mode: str = Form(...)) -> RedirectResponse:
+    """Persist one control's enforcement mode (shadow/soft/full)."""
+
+    if mode not in VALID_ENFORCEMENT_MODES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid enforcement mode: {mode!r}; must be one of {sorted(VALID_ENFORCEMENT_MODES)}",
+        )
+    pipeline = get_pipeline()
+    controls = _load_enabled_controls()
+    if control_id not in controls:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Unknown control: {control_id!r}")
+    pipeline.settings_store.update_control_mode(control_id, mode)
+    return RedirectResponse(url="/settings?saved=mode", status_code=status.HTTP_303_SEE_OTHER)

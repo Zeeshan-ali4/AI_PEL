@@ -4,8 +4,8 @@
 
 ## Current build state
 
-- Current task: T19
-- Last completed task: T18
+- Current task: T20
+- Last completed task: T19
 - Known blockers: none
 
 ## How to use this ledger
@@ -251,6 +251,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** give this room visually — it is the most resonant moment for this buyer; make breakage unmistakable.
 
 ## T19 — Settings page (DEMO-READY milestone)
+- **Status:** Done
 - **Goal:** Editable confidence threshold with a **live impact panel** ("At 0.75, Scenario 5 (0.62) escalates; lower to 0.60 and it would allow-with-logging"); editable per-control mode; changes persist and take effect immediately.
 - **Depends on:** T08, T15
 - **Spec refs:** §8A item 7, §6
@@ -274,6 +275,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** the policy-decision test asserts the full §7 table; chain test asserts tamper detection.
 
 ## T21 — README + demo script (narration)
+- **Status:** To do
 - **Goal:** README: what it is, how to run (`docker compose up`), the architecture in a paragraph, and the explicit list of what's real vs stubbed (spec §1). Plus a **demo script** — the spoken narration for the six scenarios + the tamper moment + the threshold change, written for the Head-of-Assurance audience, honouring §1B (no Horizon as a hook).
 - **Depends on:** T19, T20
 - **Spec refs:** §1, §1A, §1B, §7, §9

@@ -1,5 +1,6 @@
 """Routes for the T14 control dashboard, the T15 scenario runner/decision view,
-the T16 approval queue, and the T17 evidence record view/export."""
+the T16 approval queue, the T17 evidence record view/export, and the T18
+audit log + chain-integrity demo."""
 
 from __future__ import annotations
 
@@ -548,3 +549,91 @@ def record_export_html(request: Request, record_hash: str) -> HTMLResponse:
     response = templates.TemplateResponse(request, "record.html", context)
     response.headers["Content-Disposition"] = f'attachment; filename="evidence-record-{record_hash}.html"'
     return response
+
+
+def _build_audit_rows(records: list[EvidenceRecord]) -> list[dict[str, Any]]:
+    """Chronological, assurance-readable rows for the T18 audit log (spec §8A item 6)."""
+
+    return [
+        {
+            "id": record.id,
+            "created_at": record.created_at,
+            "record_type": record.record_type.value,
+            "correlation_id": str(record.correlation_id),
+            "decision": record.decision.decision.value,
+            "executed": record.executed,
+            "record_hash": record.record_hash,
+            "prev_hash": record.prev_hash,
+        }
+        for record in records
+    ]
+
+
+@router.get("/audit", response_class=HTMLResponse)
+def audit_log_page(
+    request: Request,
+    verify_result: str | None = None,
+    verified_count: int | None = None,
+    broken_record_id: int | None = None,
+    broken_reason: str | None = None,
+    tampered: int | None = None,
+) -> HTMLResponse:
+    """Render the chronological audit log with the chain-integrity demo (spec §8A item 6)."""
+
+    pipeline = get_pipeline()
+    records = pipeline.audit_store.read_records()
+    return templates.TemplateResponse(
+        request,
+        "audit.html",
+        {
+            "rows": _build_audit_rows(records),
+            "has_records": bool(records),
+            "verify_result": verify_result,
+            "verified_count": verified_count,
+            "broken_record_id": broken_record_id,
+            "broken_reason": broken_reason,
+            "tampered": tampered,
+        },
+    )
+
+
+@router.post("/audit/verify")
+def verify_audit_chain() -> RedirectResponse:
+    """Run the real T12 `verify_chain()` and redirect back with the unambiguous result."""
+
+    result = get_pipeline().audit_store.verify_chain()
+    if result.intact:
+        url = f"/audit?verify_result=intact&verified_count={result.verified_count}"
+    else:
+        url = (
+            "/audit?verify_result=broken"
+            f"&verified_count={result.verified_count}"
+            f"&broken_record_id={result.broken_record_id}"
+            f"&broken_reason={result.broken_reason}"
+        )
+    return RedirectResponse(url=url, status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/audit/simulate-tampering")
+def simulate_audit_tampering(record_id: int = Form(...)) -> RedirectResponse:
+    """Demo-only: mutate one stored row via the real T12 `simulate_tampering()` helper,
+    then immediately re-verify so the page shows the chain breaking and names the row.
+
+    This is the only route in the app that alters an existing audit row; normal
+    application writes only ever append through `AuditStore.write_record`.
+    """
+
+    pipeline = get_pipeline()
+    pipeline.audit_store.simulate_tampering(record_id)
+    result = pipeline.audit_store.verify_chain()
+    if result.intact:
+        url = f"/audit?verify_result=intact&verified_count={result.verified_count}&tampered={record_id}"
+    else:
+        url = (
+            "/audit?verify_result=broken"
+            f"&verified_count={result.verified_count}"
+            f"&broken_record_id={result.broken_record_id}"
+            f"&broken_reason={result.broken_reason}"
+            f"&tampered={record_id}"
+        )
+    return RedirectResponse(url=url, status_code=status.HTTP_303_SEE_OTHER)

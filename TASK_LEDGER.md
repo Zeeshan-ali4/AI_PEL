@@ -4,8 +4,8 @@
 
 ## Current build state
 
-- Current task: T15
-- Last completed task: T14
+- Current task: T16
+- Last completed task: T15
 - Known blockers: none
 
 ## How to use this ledger
@@ -211,7 +211,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** this reads like something shown to a board; framework chips match §6; counts are real.
 
 ## T15 — Scenario runner + decision view
-- **Status:** Review
+- **Status:** Done
 - **Goal:** Six scenario cards with "Run"; result page showing the decision (colour + plain reason), triggering control + framework chips, resolved context, the **evidence panel** (real Presidio entities with highlighted spans; labelled stub confidence; `threshold_used`), and — if escalated — a prominent "Sent to {role}" state linking to approvals.
 - **Depends on:** T14
 - **Spec refs:** §8A items 2–3, §7
@@ -221,6 +221,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** evidence panel makes the "model is a sensor, not judge" point visually; nothing stubbed is unlabelled.
 
 ## T16 — Approval queue view
+- **Status:** To do
 - **Goal:** Pending escalations with role, summary, evidence; Approve/Reject with a **required reason**; submitting **appends** an `approval_decision` record and updates `executed`.
 - **Depends on:** T15
 - **Spec refs:** §8A item 4, §5.5

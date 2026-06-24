@@ -7,9 +7,23 @@ live impact panel and Scenario 5 flip are verified through the real routes.
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
 from app.main import app
+
+_CONTROLS_PATH = Path(__file__).resolve().parents[2] / "opa" / "data" / "controls.json"
+
+
+def _enabled_control_ids() -> list[str]:
+    payload = json.loads(_CONTROLS_PATH.read_text())
+    return [
+        control_id
+        for control_id, control in payload["controls"].items()
+        if control.get("enabled", False)
+    ]
 
 
 def test_settings_page_renders_current_threshold_and_control_modes(wired_pipeline):
@@ -72,6 +86,34 @@ def test_impact_panel_reflects_accurate_scenario_5_outcomes_at_both_thresholds(w
     assert "escalate" in page
     assert "allow, with logging" in page or "allow_with_logging" in page
     assert "0.6" in page
+
+
+def test_per_control_modes_render_for_each_known_control(wired_pipeline):
+    client = TestClient(app)
+
+    response = client.get("/settings")
+    assert response.status_code == 200
+    page = response.text
+
+    for control_id in _enabled_control_ids():
+        assert control_id in page
+    for mode in ("shadow", "soft", "full"):
+        assert f'value="{mode}"' in page
+
+
+def test_default_threshold_keeps_scenario_5_escalated(wired_pipeline):
+    settings = wired_pipeline.settings_store.read_settings()
+    assert settings.high_confidence_threshold == 0.75
+
+    client = TestClient(app)
+    run_response = client.post("/run/5")
+    assert run_response.status_code == 200
+    payload = run_response.json()
+
+    assert payload["decision"]["decision"] == "escalate"
+    assert payload["decision"]["control_id"] == "COMM-EMAIL-002"
+    assert payload["decision"]["required_approval_role"] == "vulnerable_customer_team"
+    assert payload["decision"]["threshold_used"] == 0.75
 
 
 def test_invalid_threshold_is_rejected_with_no_silent_acceptance(wired_pipeline):

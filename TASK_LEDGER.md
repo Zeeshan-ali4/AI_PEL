@@ -4,8 +4,8 @@
 
 ## Current build state
 
-- Current task: T16
-- Last completed task: T15
+- Current task: T17
+- Last completed task: T16
 - Known blockers: none
 
 ## How to use this ledger
@@ -221,7 +221,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** evidence panel makes the "model is a sensor, not judge" point visually; nothing stubbed is unlabelled.
 
 ## T16 — Approval queue view
-- **Status:** To do
+- **Status:** Done
 - **Goal:** Pending escalations with role, summary, evidence; Approve/Reject with a **required reason**; submitting **appends** an `approval_decision` record and updates `executed`.
 - **Depends on:** T15
 - **Spec refs:** §8A item 4, §5.5
@@ -231,6 +231,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** original record is **not** mutated; reason is mandatory; correlation/reference linkage correct.
 
 ## T17 — Evidence record view + export
+- **Status:** To do
 - **Goal:** Full single-record view (readable + printable) with `record_hash`, `prev_hash`, approver, reason, execution status; **"Export for audit"** producing JSON + a human-readable file.
 - **Depends on:** T14
 - **Spec refs:** §8A item 5

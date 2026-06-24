@@ -83,4 +83,4 @@ DISCLOSURE_BASIS_BY_DOMAIN: dict[str, bool] = {
     "trusted-partner.example": True,
 }
 
-INTERNAL_EMAIL_DOMAINS = {"postoffice.co.uk", "postoffice.example"}
+INTERNAL_EMAIL_DOMAINS = {"internal.co.uk", "internal.example"}

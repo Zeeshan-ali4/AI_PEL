@@ -1,15 +1,16 @@
 """Routes for the T14 control dashboard, the T15 scenario runner/decision view,
-and the T13 JSON scenario endpoint."""
+the T16 approval queue, and the T17 evidence record view/export."""
 
 from __future__ import annotations
 
 import html
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Form, HTTPException, Request, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.pipeline import PipelineResult, UnknownScenarioError, get_pipeline
@@ -55,7 +56,7 @@ APPROVAL_QUEUE_PATH = "/approvals"
 
 # Stable demo default used when an approver identity is not supplied on the
 # approval form (spec §8A item 4 only requires the identity be populated).
-DEFAULT_HUMAN_APPROVER = "demo.named.approver@postoffice.example"
+DEFAULT_HUMAN_APPROVER = "demo.named.approver@internal.example"
 
 # Plain-English, board-readable summaries for the scenario runner cards (spec §8A item 2).
 # These do not alter scenario data or expected outcomes (scenarios/scenarios.py remains
@@ -472,3 +473,78 @@ def decide_approval(
         url=f"{APPROVAL_QUEUE_PATH}?actioned_item={appended.record_hash}",
         status_code=status.HTTP_303_SEE_OTHER,
     )
+
+
+def _find_record_by_hash(records: list[EvidenceRecord], record_hash: str) -> EvidenceRecord | None:
+    for record in records:
+        if record.record_hash == record_hash:
+            return record
+    return None
+
+
+def _get_record_or_404(record_hash: str) -> tuple[EvidenceRecord, list[EvidenceRecord]]:
+    pipeline = get_pipeline()
+    records = pipeline.audit_store.read_records()
+    record = _find_record_by_hash(records, record_hash)
+    if record is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No audit record found with record_hash {record_hash!r}.",
+        )
+    return record, records
+
+
+def _record_view_context(record: EvidenceRecord, records: list[EvidenceRecord]) -> dict[str, Any]:
+    """Build the readable, sectioned single-record view (spec §8A item 5)."""
+
+    referenced = None
+    if record.references_hash is not None:
+        referenced = _find_record_by_hash(records, record.references_hash)
+
+    action = record.action
+    decision = record.decision
+
+    return {
+        "record": record,
+        "is_approval_decision": record.record_type == RecordType.APPROVAL_DECISION,
+        "action_summary": _action_summary(action),
+        "decision_label": DECISION_DISPLAY.get(
+            decision.decision.value, {"label": decision.decision.value}
+        )["label"],
+        "control_id": decision.control_id,
+        "framework_mappings": decision.framework_mappings,
+        "referenced": referenced,
+    }
+
+
+@router.get("/records/{record_hash}", response_class=HTMLResponse)
+def record_view(request: Request, record_hash: str) -> HTMLResponse:
+    """Render the single, printable evidence record view (spec §8A item 5)."""
+
+    record, records = _get_record_or_404(record_hash)
+    return templates.TemplateResponse(request, "record.html", _record_view_context(record, records))
+
+
+@router.get("/records/{record_hash}/export.json")
+def record_export_json(record_hash: str) -> JSONResponse:
+    """Download a faithful JSON export of the persisted evidence record (spec §8A item 5, §12)."""
+
+    record, _records = _get_record_or_404(record_hash)
+    payload = record.model_dump(mode="json")
+    return JSONResponse(
+        content=payload,
+        headers={"Content-Disposition": f'attachment; filename="evidence-record-{record_hash}.json"'},
+    )
+
+
+@router.get("/records/{record_hash}/export.html", response_class=HTMLResponse)
+def record_export_html(request: Request, record_hash: str) -> HTMLResponse:
+    """Download a printable, human-readable export of the evidence record (spec §8A item 5)."""
+
+    record, records = _get_record_or_404(record_hash)
+    context = _record_view_context(record, records)
+    context["generated_at"] = datetime.now().isoformat()
+    context["is_export"] = True
+    response = templates.TemplateResponse(request, "record.html", context)
+    response.headers["Content-Disposition"] = f'attachment; filename="evidence-record-{record_hash}.html"'
+    return response

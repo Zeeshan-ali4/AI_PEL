@@ -12,8 +12,8 @@ from typing import Any
 VALID_ENFORCEMENT_MODES = {"shadow", "soft", "full"}
 
 _COMMON_ACTOR = {
-    "agent_id": "post-office-contact-centre-agent",
-    "agent_owner": "Post Office Contact Centre",
+    "agent_id": "contact-centre-agent",
+    "agent_owner": "Contact Centre",
     "role": "customer_service_agent",
 }
 

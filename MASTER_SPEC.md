@@ -1,7 +1,7 @@
 # Master Spec — Runtime Policy Enforcement Gate for AI Agent Actions (Demo Build)
 
 **Status:** v1.1 — source of truth for the demo. Supersedes v1.0.
-**Audience for the demo artifact:** the **Head of Risk and Assurance, Post Office Ltd**. The build is optimised to *demonstrate assurance* — visible human oversight, reliable evidence, and provable control operation — not engineering depth. Parts that are easy to fake (PII detection, the policy engine, the audit chain) are built for real, because faking them undermines the exact assurance claims the product makes.
+**Audience for the demo artifact:** the **Head of Risk and Assurance**. The build is optimised to *demonstrate assurance* — visible human oversight, reliable evidence, and provable control operation — not engineering depth. Parts that are easy to fake (PII detection, the policy engine, the audit chain) are built for real, because faking them undermines the exact assurance claims the product makes.
 
 Both Claude Code (architect/reviewer) and Codex (implementer) consume this document. Do not deviate from the schemas, file layout, or control logic here without updating this file first.
 
@@ -9,12 +9,11 @@ Both Claude Code (architect/reviewer) and Codex (implementer) consume this docum
 
 ## 0. Changes in v1.1 (read first if you saw v1.0)
 
-- Audience set to Post Office Head of Risk & Assurance; value framing rewritten around **assurance** (§1, §1A).
+- Audience set to Head of Risk & Assurance; value framing rewritten around **assurance** (§1, §1A).
 - **Decision precedence changed**: `block` is now reserved for a *clearly-prohibited / malicious* tier only. All other risk **escalates to a human**. (§6)
-- Controls and scenarios recontextualised to a Post Office contact-centre agent; special-category email now **escalates**, not blocks. (§6, §7)
+- Controls and scenarios recontextualised to a contact-centre agent; special-category email now **escalates**, not blocks. (§6, §7)
 - New section on **UI/UX for assurance** (§8A) — the demo's centre of gravity.
 - **Configurable confidence threshold** is now a first-class, UI-exposed setting. (§6, §8A)
-- Framework mappings retuned for Post Office; **thematic** (not fabricated) alignment to the Horizon Inquiry. (§6)
 - New **sensitivity & framing guidance** (§1B) — mandatory reading before the pitch.
 - Deployment guidance updated for a government-owned, data-sensitive buyer (§14).
 
@@ -47,15 +46,6 @@ Lead with these, in roughly this order:
 3. **Demonstrable control operation.** Risk can see each control, its framework mapping, and live evidence it is operating — and can prove it operated *before* trusting it, via shadow mode.
 4. **Governed, configurable policy.** Thresholds and controls are owned and tuned by risk in the open — not buried in code, prompts, or a vendor black box.
 5. **Proportionate, deterministic enforcement.** The model is a sensor; the policy engine is the judge; uncertainty escalates; the system fails closed.
-
----
-
-## 1B. Sensitivity & framing guidance (mandatory before the pitch)
-
-- **Do not lead with Horizon. Do not use it as a hook.** This person lives it; the statutory inquiry is ongoing; people died. Leading with the tragedy reads as opportunistic and loses the room.
-- Build so the assurance properties are *self-evidently* the antidote and let the buyer make the connection. They will, immediately.
-- If it surfaces, reference it once, soberly, as "the assurance failures the sector is rightly focused on" — not by reciting the scandal.
-- **Accuracy guard:** the Inquiry's Volume 1 (Jul 2025) and its 19 recommendations concern **compensation and redress**, not IT controls. Volume 2 (systemic failures, leadership, culture) addresses governance. Do **not** map controls to specific recommendation numbers. Alignment to the Inquiry is **thematic**: faulty automated outputs treated as authoritative, absence of effective human oversight/contestability, and reliance on system records of questionable integrity. The product addresses those failure-modes.
 
 ---
 

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Scenario runner — AI PEL Assurance Gate{% endblock %}
+
+{% block content %}
+<section class="mb-8">
+  <h1 class="text-3xl font-semibold tracking-tight">Scenario runner</h1>
+  <p class="mt-2 max-w-2xl text-slate-600">
+    Six narrative scenarios exercise the full policy gate end to end. Running one intercepts a
+    simulated agent action and evaluates it through real context, evidence, and policy before
+    opening the resulting decision.
+  </p>
+</section>
+
+<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+  {% for card in cards %}
+  <article class="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-5">
+    <div>
+      <h2 class="text-base font-semibold">Scenario {{ card.number }}: {{ card.title }}</h2>
+      <p class="mt-2 text-sm text-slate-600">{{ card.summary }}</p>
+    </div>
+    {# nosemgrep: python.django.security.django-no-csrf-token.django-no-csrf-token -- FastAPI app, not Django; no session/cookie auth backs this unauthenticated demo endpoint, so a CSRF token would have nothing to validate against #}
+    <form method="post" action="/scenarios/{{ card.number }}/run" class="mt-4">
+      <button type="submit" class="w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white">
+        Run scenario {{ card.number }}
+      </button>
+    </form>
+  </article>
+  {% endfor %}
+</div>
+{% endblock %}

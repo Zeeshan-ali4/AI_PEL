@@ -211,7 +211,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Reviewer focus:** this reads like something shown to a board; framework chips match §6; counts are real.
 
 ## T15 — Scenario runner + decision view
-- **Status:** To do
+- **Status:** Review
 - **Goal:** Six scenario cards with "Run"; result page showing the decision (colour + plain reason), triggering control + framework chips, resolved context, the **evidence panel** (real Presidio entities with highlighted spans; labelled stub confidence; `threshold_used`), and — if escalated — a prominent "Sent to {role}" state linking to approvals.
 - **Depends on:** T14
 - **Spec refs:** §8A items 2–3, §7

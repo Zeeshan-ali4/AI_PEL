@@ -15,7 +15,7 @@
   {% if escalated %}
   <div class="mt-4 rounded-lg border border-amber-300 bg-amber-100/60 px-4 py-3 text-amber-900">
     <strong>Sent to {{ required_approval_role }} for human decision.</strong>
-    <a href="{{ approval_link }}" class="ml-2 underline">View the approval queue</a>
+    <a href="{{ approval_link if approval_link.startswith('/') else '/approvals' }}" class="ml-2 underline">View the approval queue</a>
   </div>
   {% endif %}
 </section>
@@ -69,6 +69,8 @@
   {% else %}
   <div class="mt-4">
     <h3 class="text-sm font-semibold text-slate-700">Message content with highlighted spans</h3>
+    {# highlighted_body is built by _render_highlighted_text(), which html.escape()s all
+       text content and only emits a fixed <mark> wrapper — safe to render unescaped. #}
     <p class="mt-2 rounded-lg bg-slate-50 p-3 text-sm leading-relaxed">{{ highlighted_body | safe }}</p>
   </div>
 

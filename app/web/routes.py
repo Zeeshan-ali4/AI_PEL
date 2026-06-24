@@ -65,6 +65,8 @@ SCENARIO_SUMMARIES = {
     6: "An external email to a known partner containing only a customer's name.",
 }
 
+_AMBER_BADGE_CSS = "border-amber-200 bg-amber-50 text-amber-900"
+
 # Headline presentation for each binding decision value (spec §8A item 3).
 DECISION_DISPLAY = {
     "allow": {"label": "Allow", "css": "border-emerald-200 bg-emerald-50 text-emerald-900"},
@@ -72,10 +74,10 @@ DECISION_DISPLAY = {
         "label": "Allow, with logging",
         "css": "border-sky-200 bg-sky-50 text-sky-900",
     },
-    "escalate": {"label": "Escalate to a human", "css": "border-amber-200 bg-amber-50 text-amber-900"},
+    "escalate": {"label": "Escalate to a human", "css": _AMBER_BADGE_CSS},
     "block": {"label": "Block", "css": "border-rose-200 bg-rose-50 text-rose-900"},
-    "require_evidence": {"label": "Require more evidence", "css": "border-amber-200 bg-amber-50 text-amber-900"},
-    "modify": {"label": "Modify before proceeding", "css": "border-amber-200 bg-amber-50 text-amber-900"},
+    "require_evidence": {"label": "Require more evidence", "css": _AMBER_BADGE_CSS},
+    "modify": {"label": "Modify before proceeding", "css": _AMBER_BADGE_CSS},
     "fail_closed": {"label": "Fail closed", "css": "border-rose-200 bg-rose-50 text-rose-900"},
 }
 

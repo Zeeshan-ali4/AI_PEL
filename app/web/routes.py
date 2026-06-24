@@ -18,6 +18,8 @@ router = APIRouter()
 _TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+
 CONTROLS_PATH = Path(__file__).resolve().parents[2] / "opa" / "data" / "controls.json"
 
 # Plain-English board labels for the internal decision tiers (spec §6 / §8A item 1).

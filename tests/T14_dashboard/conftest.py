@@ -17,7 +17,6 @@ import pytest
 
 import app.pipeline as pipeline_module
 from app.audit.store import AuditStore
-from app.pipeline import PolicyPipeline
 from app.schemas.action import Action
 from app.schemas.context import Context
 from app.schemas.decision import Decision
@@ -107,10 +106,10 @@ def write_action_evaluation(store: AuditStore, *, decision: str, control_id: str
 
 
 @pytest.fixture
-def wired_pipeline(tmp_path, monkeypatch) -> PolicyPipeline:
+def wired_pipeline(tmp_path, monkeypatch) -> pipeline_module.PolicyPipeline:
     """Point the app's process-local pipeline at fresh sqlite-backed stores."""
 
-    pipe = PolicyPipeline(
+    pipe = pipeline_module.PolicyPipeline(
         settings_store=SettingsStore(f"sqlite:///{tmp_path / 'settings.db'}"),
         audit_store=AuditStore(f"sqlite:///{tmp_path / 'audit.db'}"),
     )

@@ -3,13 +3,16 @@ from typing import Literal
 import httpx
 import psycopg
 from fastapi import FastAPI, Response, status
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from app.config import get_settings
+from app.web.routes import STATIC_DIR
 from app.web.routes import router as dashboard_router
 
 app = FastAPI(title="AI PEL Runtime Policy Enforcement Gate")
 app.include_router(dashboard_router)
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 StatusValue = Literal["ok", "fail"]
 

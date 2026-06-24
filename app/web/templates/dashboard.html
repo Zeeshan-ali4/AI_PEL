@@ -30,6 +30,7 @@
   <p class="mt-2 text-sm text-slate-500">
     Sets every control listed below to the same mode. Risk owns this switch, not engineering.
   </p>
+  {# nosemgrep: python.django.security.django-no-csrf-token.django-no-csrf-token -- FastAPI app, not Django; no session/cookie auth backs this unauthenticated demo endpoint, so a CSRF token would have nothing to validate against #}
   <form method="post" action="/mode" class="mt-4 flex flex-wrap items-center gap-3">
     {% for mode in valid_modes %}
     <label class="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm">

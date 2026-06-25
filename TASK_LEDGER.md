@@ -268,7 +268,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 > These tasks transform the demo from "click and see a result" to "watch a control plane operating in real time." They do not add new enforcement logic — they add observability, configurability, and auditability UX that makes the demo feel like a production system. **Scope discipline is critical**: each task has a hard boundary. Do not build a policy studio, a notification system, or a real-time streaming platform. Build exactly what is specified.
 
 ## T22 — Live event feed with background traffic (headline demo moment)
-- **Status:** To do
+- **Status:** Done
 - **Goal:** Clicking "Run Scenario N" fires a burst of 8–12 randomised background events through the **real pipeline** (normalise, resolve, evidence, OPA, audit), streamed to the UI via Server-Sent Events, followed by the focal scenario event. The UI shows a live vertical feed of events resolving in real time. Background events appear as compact rows (timestamp, action type, target, decision badge). The focal event appears last with visual emphasis and expands to show the full pipeline trace (stage-by-stage outputs + timing), the evidence panel, triggering control, and framework mappings. The buyer watches routine actions sail through as "allow," then sees the focal event get blocked or escalated — making the enforcement point visceral.
 - **Depends on:** T13, T05 (fixture data for background events)
 - **Spec refs:** §11, §7, §8A (new section)

@@ -1,13 +1,14 @@
 {% extends "base.html" %}
 
+{% set active_nav = "settings" %}
 {% block title %}Settings — AI PEL Assurance Gate{% endblock %}
 
 {% block content %}
-<a href="/" class="text-sm text-slate-500 hover:text-slate-900">&larr; Back to control dashboard</a>
+<a href="/" class="back-link">&larr; Back to control dashboard</a>
 
-<section class="mt-4 mb-8">
-  <h1 class="text-2xl font-semibold">Settings</h1>
-  <p class="mt-2 text-sm text-slate-600">
+<section class="intro">
+  <h1>Settings</h1>
+  <p>
     Risk owns the policy here, not engineering. The confidence threshold and each
     control's enforcement mode are stored centrally and take effect immediately —
     the very next run uses whatever is saved below, with no restart.
@@ -15,29 +16,23 @@
 </section>
 
 {% if saved == "threshold" %}
-<section class="mb-6 rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-emerald-900 text-sm">
-  Confidence threshold saved. It applies to every run from now on.
-</section>
+<div class="banner banner-success">Confidence threshold saved. It applies to every run from now on.</div>
 {% elif saved == "mode" %}
-<section class="mb-6 rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-emerald-900 text-sm">
-  Control mode saved. It applies to every run from now on.
-</section>
+<div class="banner banner-success">Control mode saved. It applies to every run from now on.</div>
 {% elif error %}
-<section class="mb-6 rounded-xl border border-rose-300 bg-rose-50 p-4 text-rose-900 text-sm">
-  {{ error }}
-</section>
+<div class="banner banner-error">{{ error }}</div>
 {% endif %}
 
-<section id="threshold" class="mb-8 rounded-xl border border-slate-200 bg-white p-6">
-  <h2 class="text-lg font-semibold">Confidence threshold</h2>
-  <p class="mt-1 text-sm text-slate-600">
+<section id="threshold" class="card">
+  <h2>Confidence threshold</h2>
+  <p>
     The vulnerability-indicator stub's confidence is compared against this threshold
     (spec control COMM-EMAIL-002). Below the threshold, the gate treats the signal as
     uncertain and escalates to a named human rather than deciding on its own.
   </p>
   {# nosemgrep: python.django.security.django-no-csrf-token.django-no-csrf-token -- FastAPI app, not Django; no session/cookie auth backs this unauthenticated demo endpoint, so a CSRF token would have nothing to validate against #}
-  <form method="post" action="/settings/threshold" class="mt-4 flex flex-wrap items-center gap-3">
-    <label class="text-sm text-slate-700" for="threshold-input">High-confidence threshold (0&ndash;1)</label>
+  <form method="post" action="/settings/threshold" class="field-inline">
+    <label class="field-label" for="threshold-input">High-confidence threshold (0&ndash;1)</label>
     <input
       id="threshold-input"
       type="number"
@@ -46,49 +41,47 @@
       min="0"
       max="1"
       value="{{ threshold }}"
-      class="w-28 rounded-md border border-slate-300 p-2 text-sm"
+      class="input-sm"
       required
     >
-    <button type="submit" class="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
-      Save threshold
-    </button>
+    <button type="submit" class="btn btn-primary">Save threshold</button>
   </form>
-  <p class="mt-2 text-xs text-slate-500">Current saved value: <span class="font-mono">{{ threshold }}</span></p>
+  <p class="card-note" style="margin-top: 0.625rem;">Current saved value: <span class="mono">{{ threshold }}</span></p>
 </section>
 
-<section id="impact-panel" class="mb-8 rounded-xl border border-sky-200 bg-sky-50 p-6">
-  <h2 class="text-lg font-semibold text-sky-900">Live impact: Scenario 5</h2>
-  <p class="mt-1 text-sm text-sky-900">
+<section id="impact-panel" class="card panel-info">
+  <h2 style="color: var(--blue);">Live impact: Scenario 5</h2>
+  <p>
     Scenario 5's labelled model stand-in always reports the same fixed confidence,
-    <span class="font-mono">{{ impact.stub_confidence }}</span> — this panel reruns
+    <span class="mono">{{ impact.stub_confidence }}</span> — this panel reruns
     the real policy decision (through OPA, not a hand-written rule here) at the
     currently saved threshold and at a threshold you choose, so you can see exactly
     how the saved value would change the outcome.
   </p>
 
-  <div class="mt-4 grid gap-4 sm:grid-cols-2">
-    <div class="rounded-lg border border-sky-300 bg-white p-4">
-      <p class="text-xs uppercase tracking-wide text-slate-500">At the saved threshold ({{ impact.current_threshold }})</p>
-      <p class="mt-1 text-lg font-semibold">{{ impact.current_label }}</p>
+  <div class="decision-grid">
+    <div class="decision-tile">
+      <p class="eyebrow">At the saved threshold ({{ impact.current_threshold }})</p>
+      <p style="margin: 0; font-size: 1rem; font-weight: 600; color: var(--text);">{{ impact.current_label }}</p>
     </div>
-    <div class="rounded-lg border border-sky-300 bg-white p-4">
-      <p class="text-xs uppercase tracking-wide text-slate-500">At a preview threshold ({{ impact.preview_threshold }})</p>
-      <p class="mt-1 text-lg font-semibold">{{ impact.preview_label }}</p>
+    <div class="decision-tile">
+      <p class="eyebrow">At a preview threshold ({{ impact.preview_threshold }})</p>
+      <p style="margin: 0; font-size: 1rem; font-weight: 600; color: var(--text);">{{ impact.preview_label }}</p>
     </div>
   </div>
 
-  <p class="mt-3 text-sm text-sky-900">
+  <p style="margin-top: 0.875rem;">
     {% if impact.would_change %}
     Moving the saved threshold to {{ impact.preview_threshold }} would change Scenario 5
-    from <strong>{{ impact.current_label }}</strong> to <strong>{{ impact.preview_label }}</strong>.
+    from <strong style="color: var(--text);">{{ impact.current_label }}</strong> to <strong style="color: var(--text);">{{ impact.preview_label }}</strong>.
     {% else %}
     At {{ impact.preview_threshold }}, Scenario 5's outcome would stay
-    <strong>{{ impact.current_label }}</strong>.
+    <strong style="color: var(--text);">{{ impact.current_label }}</strong>.
     {% endif %}
   </p>
 
-  <form method="get" action="/settings" class="mt-4 flex flex-wrap items-center gap-3">
-    <label class="text-sm text-sky-900" for="preview-threshold-input">Preview threshold</label>
+  <form method="get" action="/settings" class="field-inline" style="margin-top: 1rem;">
+    <label class="field-label" for="preview-threshold-input">Preview threshold</label>
     <input
       id="preview-threshold-input"
       type="number"
@@ -97,52 +90,50 @@
       min="0"
       max="1"
       value="{{ impact.preview_threshold }}"
-      class="w-28 rounded-md border border-sky-300 p-2 text-sm"
+      class="input-sm"
     >
-    <button type="submit" class="rounded-md border border-sky-400 bg-white px-4 py-2 text-sm font-medium text-sky-900 hover:bg-sky-100">
-      Recalculate preview
-    </button>
+    <button type="submit" class="btn btn-ghost">Recalculate preview</button>
   </form>
 </section>
 
-<section id="control-modes" class="rounded-xl border border-slate-200 bg-white p-6">
-  <h2 class="text-lg font-semibold">Per-control enforcement mode</h2>
-  <p class="mt-1 text-sm text-slate-600">
-    <span class="font-semibold">Shadow</span> evaluates and records but always executes;
-    <span class="font-semibold">soft</span> enforces an allow-listed subset; <span class="font-semibold">full</span>
+<section id="control-modes" class="card">
+  <h2>Per-control enforcement mode</h2>
+  <p>
+    <strong style="color: var(--text);">Shadow</strong> evaluates and records but always executes;
+    <strong style="color: var(--text);">soft</strong> enforces an allow-listed subset; <strong style="color: var(--text);">full</strong>
     enforces every control. Each control here can be set independently.
   </p>
-  <div class="mt-4 overflow-x-auto">
-    <table class="w-full text-left text-sm">
-      <thead class="text-xs uppercase tracking-wide text-slate-500">
-        <tr>
-          <th class="py-2 pr-3">Control</th>
-          <th class="py-2 pr-3">Purpose</th>
-          <th class="py-2 pr-3">Mode</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-slate-100">
-        {% for row in control_rows %}
-        <tr>
-          <td class="py-2 pr-3 font-mono text-xs">{{ row.id }}</td>
-          <td class="py-2 pr-3">{{ row.description }}</td>
-          <td class="py-2 pr-3">
-            <form method="post" action="/settings/control-mode" class="flex items-center gap-2">
-              <input type="hidden" name="control_id" value="{{ row.id }}">
-              <select name="mode" class="rounded-md border border-slate-300 p-1.5 text-sm capitalize">
-                {% for mode in valid_modes %}
-                <option value="{{ mode }}" {{ "selected" if mode == row.mode else "" }}>{{ mode }}</option>
-                {% endfor %}
-              </select>
-              <button type="submit" class="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800">
-                Save
-              </button>
-            </form>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <div class="table-shell" style="margin-top: 1rem; box-shadow: none; border: none;">
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Control</th>
+            <th>Purpose</th>
+            <th>Mode</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in control_rows %}
+          <tr>
+            <td class="mono">{{ row.id }}</td>
+            <td>{{ row.description }}</td>
+            <td>
+              <form method="post" action="/settings/control-mode" class="field-inline" style="gap: 0.5rem;">
+                <input type="hidden" name="control_id" value="{{ row.id }}">
+                <select name="mode">
+                  {% for mode in valid_modes %}
+                  <option value="{{ mode }}" {{ "selected" if mode == row.mode else "" }}>{{ mode }}</option>
+                  {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-sm btn-primary">Save</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 </section>
 {% endblock %}

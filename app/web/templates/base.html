@@ -4,23 +4,40 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}AI PEL — Runtime Policy Enforcement Gate{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/styles.css">
   </head>
-  <body class="bg-slate-50 text-slate-900">
-    <header class="border-b border-slate-200 bg-white">
-      <div class="mx-auto max-w-6xl px-6 py-5 flex items-center justify-between">
-        <a href="/" class="text-xl font-semibold tracking-tight">AI PEL Assurance Gate</a>
-        <nav class="text-sm text-slate-500 flex gap-4">
-          <a href="/" class="hover:text-slate-900">Control dashboard</a>
-          <a href="/audit" class="hover:text-slate-900">Audit log &amp; integrity</a>
+  <body>
+    <header class="app-header">
+      <div class="page-shell header-inner">
+        <a href="/" class="brand" aria-label="AI PEL Assurance Gate home">
+          <span class="brand-pulse" aria-hidden="true"></span>
+          <span class="brand-name">AI PEL Assurance Gate</span>
+        </a>
+
+        <div class="header-status" aria-label="Current operating mode">
+          {% block header_status %}
+          <span class="mode-chip mode-chip-neutral">
+            <span class="status-dot" aria-hidden="true"></span>
+            Runtime gate
+          </span>
+          {% endblock %}
+        </div>
+
+        <nav class="nav-links" aria-label="Primary navigation">
+          <a href="/" class="nav-link {{ 'nav-link-active' if active_nav == 'dashboard' else '' }}">Control Dashboard</a>
+          <a href="/scenarios" class="nav-link {{ 'nav-link-active' if active_nav == 'scenarios' else '' }}">Scenarios</a>
+          <a href="/approvals" class="nav-link {{ 'nav-link-active' if active_nav == 'approvals' else '' }}">Approvals</a>
+          <a href="/audit" class="nav-link {{ 'nav-link-active' if active_nav == 'audit' else '' }}">Audit Log &amp; Integrity</a>
+          <a href="/settings" class="nav-link {{ 'nav-link-active' if active_nav == 'settings' else '' }}">Settings</a>
         </nav>
       </div>
     </header>
-    <main class="mx-auto max-w-6xl px-6 py-8">
+
+    <main class="page-shell main-content">
       {% block content %}{% endblock %}
     </main>
-    <footer class="mx-auto max-w-6xl px-6 py-8 text-xs text-slate-400">
-      Demonstration build — figures marked "illustrative" are simulated, not live agent telemetry.
-    </footer>
   </body>
 </html>

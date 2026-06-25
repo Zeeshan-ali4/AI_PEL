@@ -4,7 +4,7 @@
 
 ## Current build state
 
-- Current task: T20 and T21
+- Current task: T22 / T23 / T25 (parallelisable); T20 and T21 pending revised dependencies
 - Last completed task: T19
 - Known blockers: none
 
@@ -34,10 +34,11 @@ Phase 0  Foundations         T01
 Phase 1  Contracts           T02
 Phase 2  Components          T03 → T04 → T05 → T06 → T07 → T08 → T09 → T10 → T11 → T12 → T13
 Phase 3  Assurance UI        T14 → T15 → T16 → T17 → T18 → T19
+Phase 3B Production Feel     T22 (parallel: T23, T25) → T24
 Phase 4  Verify & present    T20 → T21
 ```
 
-Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON endpoint, before any UI). Demo-ready is **T19**. Tasks within a phase are mostly linear; where two can run in parallel it is noted.
+Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON endpoint, before any UI). Demo-ready is **T19**. Production-feel milestone is **T24** (live event feed, rule editor, audit security). Tasks within a phase are mostly linear; where two can run in parallel it is noted.
 
 ---
 
@@ -262,31 +263,182 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 
 ---
 
+# PHASE 3B — Production Feel (the "this is a real system" layer)
+
+> These tasks transform the demo from "click and see a result" to "watch a control plane operating in real time." They do not add new enforcement logic — they add observability, configurability, and auditability UX that makes the demo feel like a production system. **Scope discipline is critical**: each task has a hard boundary. Do not build a policy studio, a notification system, or a real-time streaming platform. Build exactly what is specified.
+
+## T22 — Live event feed with background traffic (headline demo moment)
+- **Status:** To do
+- **Goal:** Clicking "Run Scenario N" fires a burst of 8–12 randomised background events through the **real pipeline** (normalise, resolve, evidence, OPA, audit), streamed to the UI via Server-Sent Events, followed by the focal scenario event. The UI shows a live vertical feed of events resolving in real time. Background events appear as compact rows (timestamp, action type, target, decision badge). The focal event appears last with visual emphasis and expands to show the full pipeline trace (stage-by-stage outputs + timing), the evidence panel, triggering control, and framework mappings. The buyer watches routine actions sail through as "allow," then sees the focal event get blocked or escalated — making the enforcement point visceral.
+- **Depends on:** T13, T05 (fixture data for background events)
+- **Spec refs:** §11, §7, §8A (new section)
+- **Files:**
+  - `app/scenarios/background_events.py` — pool of 20–25 routine action templates
+  - `app/pipeline.py` — modify to return a structured `PipelineTrace` alongside the Decision
+  - `app/web/routes.py` — new SSE streaming endpoint `GET /run/{scenario_id}/stream`
+  - `app/web/templates/event_feed.html` — live feed UI with EventSource JS
+  - `app/web/static/event_feed.js` — JS for sequential event rendering + focal event expansion
+  - `tests/T22_event_feed/`
+- **Key notes:**
+  - **Background event pool** (`background_events.py`): 20–25 routine action templates using existing action types and clean fixture data. Examples: £30 refund to CUST-100, internal email to colleague@postoffice.example, case note update, £120 refund to CUST-200. Each run randomly samples 8–12 from the pool so repeated clicks look different. **Design them to be boring** — they should all resolve to `allow` or `allow_with_logging`. If a background event accidentally triggers an escalation, the demo moment is diluted. They are wallpaper; the focal event is the painting.
+  - **Pipeline trace** (`PipelineTrace`): a list of stage results captured during pipeline execution. Each stage entry includes `stage_name`, `timestamp`, `duration_ms`, `inputs_summary` (compact), and `outputs_summary` (compact). Stages: `intercept`, `normalise`, `resolve_context`, `semantic_evidence` (or `semantic_skipped` for payments), `policy_decision`, `enforce`, `audit_write`. Do **not** restructure the pipeline — add trace capture as a lightweight wrapper/collector that records what each stage produced.
+  - **SSE endpoint**: FastAPI `StreamingResponse` with `text/event-stream` content type. Each event is a small JSON payload: `{event_index, total_events, is_focal, action_summary, decision, control_id, trace (only on focal)}`. Yield one event per pipeline execution with a small delay (200–400ms) between background events for visual pacing. The focal event yields last with the full trace.
+  - **Frontend**: EventSource JS. Each arriving event appends a row to a vertical feed. Background events: compact single-line rows with a green/neutral decision badge. Focal event: arrives last, highlighted with a distinct colour (amber/red per decision), auto-expands to show the pipeline trace as a vertical timeline of stage cards. Each stage card shows what it consumed, what it produced, and elapsed time. For email scenarios, the `semantic_evidence` stage card shows Presidio entities and confidence appearing. For payment scenarios, the card says "Semantic layer not invoked — structured action."
+  - **Background events write real audit records.** This populates the audit log with realistic volume, making the hash chain and audit views more impressive. Add a "Reset demo data" button to clear and re-run cleanly (if T18 doesn't already have one).
+  - **Do not over-engineer.** No WebSockets. No persistent event bus. No background workers. The SSE endpoint runs the pipeline in a loop synchronously and yields each result. This is a demo, not a production streaming platform.
+- **Done when:**
+  1. Clicking any scenario shows 8–12 background events streaming in as compact rows with "allow" decisions
+  2. The focal event appears last with visual emphasis and the correct §7 decision
+  3. Expanding the focal event shows the full pipeline trace with stage-by-stage outputs
+  4. Running the same scenario twice shows a different mix of background events
+  5. All events (background + focal) write real audit records and the hash chain remains intact
+  6. Payment focal events show "semantic layer not invoked" in the trace; email focal events show Presidio entities
+- **Verify:** Run scenario #3 (fraud block). Watch 8+ green "allow" rows stream in. See the final row turn red with "BLOCK — FIN-PAY-001". Expand it. Confirm the trace shows all pipeline stages. Switch to audit log — confirm all events are recorded with valid chain. Run again — confirm different background event mix.
+- **Reviewer focus:** The focal event must *land* — after a stream of green, the red/amber row must be visually unmistakable. Background events must be genuinely boring (no accidental escalations). SSE must work without page reload. Trace must show real stage outputs, not hardcoded text. Every event writes a real audit record.
+- **Estimate:** 2–3 days. SSE plumbing is ~30 lines. Background event pool is the main work — each template needs valid fixture data that passes through the real pipeline.
+
+## T23 — Policy rule editor (extends T19)
+- **Status:** To do
+- **Goal:** Extend the settings page with a control-level configuration panel. Each control from `controls.json` can be toggled enabled/disabled. Key parameters — specifically the refund escalation threshold (currently £500, FIN-PAY-002) — are editable via the UI. Changes persist and take effect on the next pipeline run with no restart. The buyer sees "risk owns the policy, not engineering" — they can disable a control or change a threshold and immediately observe the decision change.
+- **Depends on:** T19, T10
+- **Spec refs:** §6, §8A item 7 (extended)
+- **Files:**
+  - `app/settings_store.py` — extend to store per-control enabled flag + parameterised thresholds
+  - `opa/data/controls.json` — add `enabled` field and `parameters` object per control
+  - `opa/policies/payment.rego` — add guard clause checking `enabled`; read threshold from `parameters`
+  - `opa/policies/email.rego` — add guard clause checking `enabled`
+  - `app/web/templates/settings.html` — extend with control toggle + parameter editor section
+  - `app/web/routes.py` — extend settings routes
+  - `tests/T23_rule_editor/`
+- **Key notes:**
+  - **Hard scope boundary:** This is a toggle + one or two editable parameters per control. It is NOT a policy authoring tool, NOT a Rego editor, NOT a rule builder. Two controls get editable parameters: FIN-PAY-002 (refund threshold amount) and the confidence threshold (already in T19). All controls get an enabled/disabled toggle.
+  - **OPA integration:** The enabled flag and parameters are pushed into the OPA input alongside existing settings (via `config` in the OPA input contract). Rego policies add a guard: `control_enabled("FIN-PAY-002")` early in the rule, so disabled controls never fire. The refund threshold reads from `input.config.parameters["FIN-PAY-002"].amount_threshold` instead of a hardcoded 500.
+  - **Settings store:** Extend the existing DB-backed settings to include a JSON column (or separate rows) for per-control config. Seed defaults matching the current hardcoded values on first run.
+  - **UI:** Below the existing confidence threshold section, add a "Controls" section. Each control shows: ID, plain-English name, enabled toggle, current mode (from T19), and — where applicable — editable parameters. Use inline editing, not a modal. Show a "change takes effect on next evaluation" confirmation.
+  - **Demo moment:** Disable FIN-PAY-002 (refund escalation). Re-run Scenario #2 (£850 refund, clean customer). It now resolves to `allow` instead of `escalate`. Re-enable it — back to `escalate`. Change the threshold from £500 to £1000. Re-run Scenario #2 — it resolves to `allow` (£850 is now under threshold). This is a 30-second demo beat that shows policy is configuration, not code.
+- **Done when:**
+  1. Each control has an enabled/disabled toggle on the settings page
+  2. Disabling FIN-PAY-002 and re-running Scenario #2 yields `allow` instead of `escalate`
+  3. Re-enabling FIN-PAY-002 restores the `escalate` decision
+  4. Changing the FIN-PAY-002 amount threshold from 500 to 1000 and re-running Scenario #2 yields `allow`
+  5. Restoring the threshold to 500 restores `escalate`
+  6. All changes persist across page refresh (DB-backed)
+  7. No restart required
+- **Verify:** Toggle FIN-PAY-002 off → run #2 → allow. Toggle on → run #2 → escalate. Set threshold to 1000 → run #2 → allow. Set to 500 → run #2 → escalate. Restart app → confirm settings persisted.
+- **Reviewer focus:** Rego must read the threshold from input, not hardcode it. Disabled controls must be genuinely skipped in OPA (not filtered in Python after the fact — that would undermine the "policy engine decides" principle). Parameter changes must not require any file edit or restart.
+- **Estimate:** 1–1.5 days. The Rego changes are small. The settings store extension is moderate. The UI is a section addition to an existing page.
+
+## T24 — Escalation dashboard polish (extends T16)
+- **Status:** To do
+- **Goal:** Enhance the approval queue to feel like an operational dashboard rather than a basic list. Add a pending-count badge in the nav bar (visible from any page), timestamps and triggering scenario context on each queue item, a role filter ("show only items for `finance_supervisor`"), and a link from each queue item to the pipeline trace that caused the escalation (linking to T22's trace view for the focal event).
+- **Depends on:** T16, T22 (for trace linkage)
+- **Spec refs:** §8A item 4 (extended)
+- **Files:**
+  - `app/web/templates/base.html` — add pending-count badge to nav
+  - `app/web/templates/approvals.html` — extend with timestamps, context summary, role filter, trace link
+  - `app/web/routes.py` — extend approval routes (pending count endpoint for nav, role filter param)
+  - `tests/T24_escalation_polish/`
+- **Key notes:**
+  - **Pending badge:** A count of pending (un-actioned) escalations, shown next to the "Approvals" nav link on every page. Fetched from the audit store (count of `escalate` records with no linked `approval_decision`). Can be a simple server-rendered count on page load — no need for live updates.
+  - **Queue item enrichment:** Each item shows: timestamp of the escalation, the action type and target (e.g. "£850 refund to CUST-100"), the triggering control ID and reason, the required approval role, and a "View trace" link that opens the pipeline trace from T22 (link by `correlation_id`).
+  - **Role filter:** A simple dropdown or tab bar: "All", "finance_supervisor", "data_protection_officer". Filters the queue server-side.
+  - **This is polish, not new architecture.** Do not add notifications, email alerts, SLA timers, or assignment logic. The existing approve/reject with mandatory reason workflow is unchanged.
+- **Done when:**
+  1. Nav bar shows a pending escalation count badge on all pages
+  2. Queue items show timestamp, action summary, triggering control, and required role
+  3. Role filter works (selecting "finance_supervisor" hides DPO escalations)
+  4. "View trace" link on each item opens the relevant pipeline trace from T22
+  5. Approve/reject workflow is unchanged and still works correctly
+- **Verify:** Run scenario #2 (escalate). See badge appear in nav. Open approvals. Confirm enriched item. Filter by role. Click "View trace" — confirm it shows the pipeline trace for that evaluation. Approve with reason — badge count decrements.
+- **Reviewer focus:** Badge count is accurate and updates on page navigation. Trace linkage uses `correlation_id` correctly. The existing append-only approval workflow is not broken by the additions.
+- **Estimate:** 0.5–1 day. This is template and route work on existing infrastructure.
+
+## T25 — Audit security demonstration (extends T17/T18)
+- **Status:** To do
+- **Goal:** Make the audit security story visually explicit for a non-technical reviewer. Two additions: (1) a visual hash chain view in the audit log showing each record's hash and its link to the previous record's hash, making the chain structure obvious; (2) an enhanced "Export audit package" function that bundles all records for a given `correlation_id` (or a date range) into a single JSON file with a package-level integrity hash, so the buyer can see that evidence can be extracted for external review in a tamper-evident format.
+- **Depends on:** T17, T18
+- **Spec refs:** §5.5, §8A items 5–6 (extended)
+- **Files:**
+  - `app/web/templates/audit.html` — extend with visual chain view (hash links between records)
+  - `app/web/templates/record.html` — extend export to include chain hashes
+  - `app/audit/store.py` — add `export_audit_package()` method (JSON bundle + integrity hash)
+  - `app/web/routes.py` — extend export route
+  - `tests/T25_audit_security/`
+- **Key notes:**
+  - **Visual chain:** In the audit log list, each record shows a truncated `record_hash` and `prev_hash`, with a visual connector (line or arrow) linking each record's `prev_hash` to the previous record's `record_hash`. This makes hash chaining tangible to someone who has never seen it. When the chain is intact, connectors are green. After "Simulate tampering," the broken link turns red with the mismatched hashes shown side by side.
+  - **Audit package export:** A "Download audit package" button (on the audit page or filtered by correlation_id) produces a JSON file containing: all records in the selection, the full hash chain for those records, and a `package_integrity_hash` computed over the entire bundle. The file includes a human-readable header explaining what the hashes mean and how to verify. This is not a digital signature (no PKI in the demo) — it is a self-contained integrity check.
+  - **Do not build:** PKI/signing infrastructure, external verification service, WORM storage integration, or any real cryptographic attestation beyond SHA-256 hashing. Label the package as "demo integrity check — production would use signed attestation."
+- **Done when:**
+  1. Audit log shows visual hash chain links between records
+  2. Chain links are green when intact, red at the break point after simulated tampering
+  3. "Download audit package" produces a JSON file with records + package integrity hash
+  4. The package file includes a human-readable explanation of the integrity model
+  5. The package is labelled as a demo (not production-grade signing)
+- **Verify:** Run several scenarios. Open audit log. Confirm visual chain links are visible and green. Click "Download audit package" — open the file, confirm records and integrity hash are present. Simulate tampering — confirm the broken chain link turns red with mismatched hashes displayed. Download package again — confirm the integrity hash has changed.
+- **Reviewer focus:** The visual chain must be immediately comprehensible to a non-technical reviewer — no cryptography jargon on the page. The broken-link visualisation after tampering should be the "aha" moment. The export package must be honest about being a demo-grade integrity check.
+- **Estimate:** 0.5–1 day. Mostly template work plus a small export function.
+
+---
+
 # PHASE 4 — Verify & present
 
 ## T20 — Test suite
 - **Status:** To do
-- **Goal:** The four test files (spec §10): normaliser mapping; Presidio detection on the planted bodies; **policy decisions per scenario** (each of the six → expected §7 decision); audit chain integrity + tamper detection.
-- **Depends on:** T13 (logic complete)
+- **Goal:** The four core test files (spec §10): normaliser mapping; Presidio detection on the planted bodies; **policy decisions per scenario** (each of the six → expected §7 decision); audit chain integrity + tamper detection. Plus two additional test files covering Phase 3B: background event safety (all background events resolve to `allow` or `allow_with_logging`, never escalate/block); control toggle and parameter override (disabling a control or changing a parameter changes the OPA decision).
+- **Depends on:** T13, T22, T23
 - **Spec refs:** §10, §12, §7
-- **Files:** `tests/test_normaliser.py`, `test_presidio_sensor.py`, `test_policy_decisions.py`, `test_audit_chain.py`
-- **Done when:** `pytest` is green; `test_policy_decisions` is the regression guard that the demo can never silently drift from §7.
+- **Files:** `tests/test_normaliser.py`, `test_presidio_sensor.py`, `test_policy_decisions.py`, `test_audit_chain.py`, `test_background_events.py`, `test_rule_editor.py`
+- **Done when:** `pytest` is green; `test_policy_decisions` is the regression guard that the demo can never silently drift from §7; `test_background_events` confirms no accidental escalations in the background pool; `test_rule_editor` confirms control toggle and parameter override affect OPA decisions.
 - **Verify:** `docker compose run --rm app pytest -q`.
-- **Reviewer focus:** the policy-decision test asserts the full §7 table; chain test asserts tamper detection.
+- **Reviewer focus:** the policy-decision test asserts the full §7 table; chain test asserts tamper detection; background event test guarantees no surprise escalations; rule editor test confirms Rego reads parameters from input.
 
 ## T21 — README + demo script (narration)
 - **Status:** To do
-- **Goal:** README: what it is, how to run (`docker compose up`), the architecture in a paragraph, and the explicit list of what's real vs stubbed (spec §1). Plus a **demo script** — the spoken narration for the six scenarios + the tamper moment + the threshold change, written for the Head-of-Assurance audience, honouring §1B (no Horizon as a hook).
-- **Depends on:** T19
+- **Goal:** README: what it is, how to run (`docker compose up`), the architecture in a paragraph, and the explicit list of what's real vs stubbed (spec §1). Plus a **demo script** — the spoken narration written for the Head-of-Assurance audience, honouring §1B (no Horizon as a hook).
+- **Depends on:** T19, T22, T23, T24, T25
 - **Spec refs:** §1, §1A, §1B, §7, §9
 - **Files:** `README.md` (final), `DEMO_SCRIPT.md`
-- **Done when:** a stranger can `docker compose up` and run the demo from the script alone; the narration leads with assurance value.
-- **Verify:** follow your own README on a clean checkout; run the demo from the script.
-- **Reviewer focus:** the "what's real vs stubbed" honesty list is present; demo script tone is right for the room.
+- **Key notes:**
+  - **Demo script must include the following beats in this order:**
+    1. **Dashboard calm.** Open landing page. Show aggregate stats (total evaluations, % allowed/escalated/blocked, breakdown by action type). Show controls listed, modes, framework chips. "This is what your AI operations look like when the control plane is running." *(Requires: summary stats cards on the dashboard — a few SQL count queries rendered at the top of `dashboard.html`. This is minor template work; implement as part of T21 if not already present.)*
+    2. **Live feed — routine.** Run a low-risk scenario (#1 or #6) via the event feed. Watch 8–12 background events stream through, all green. "These are AI agents operating within policy. Every action evaluated, every decision recorded."
+    3. **Live feed — enforcement.** Run #3 (fraud block). Stream of green, then the red row lands. Expand the pipeline trace. Walk through each stage. "This agent tried to issue a refund to a flagged customer. The system caught it in 200 milliseconds."
+    4. **Human oversight.** Run #2 (escalation). Show the amber row. Show it appear in the approval queue (badge increments). Walk through the enriched queue item. Approve with reason. "This refund was legitimate but high-value. The system didn't block it — it routed it to the right human."
+    5. **Semantic evidence.** Run #4 (email with health data). Show the evidence panel — Presidio entities, highlighted spans, confidence score. "The semantic layer detected NHS numbers and health information. It didn't make the decision — it provided evidence. The policy engine decided."
+    6. **Shadow mode.** Switch all controls to shadow mode on the settings page. Re-run #3 (fraud). It executes — but the record says "would have blocked, FIN-PAY-001." Switch back to full enforcement. Re-run. It blocks. "No enterprise deploys enforcement on day one. Shadow mode lets you observe before you enforce." *(Requires: the decision view must clearly render shadow-mode state — "Executed (shadow) — would have blocked." Confirm T15's decision view handles this; add a shadow-mode callout if not.)*
+    7. **Policy control.** On settings, disable FIN-PAY-002. Re-run #2. It allows. Re-enable. Change threshold from £500 to £1000. Re-run #2. It allows. Restore. "Your risk team owns these policies. No code change. No deployment."
+    8. **Confidence threshold.** Change the semantic threshold from 0.75 to 0.60. Re-run #5. It flips from escalate to allow-with-logging. "You decide the confidence level at which the system defers to a human."
+    9. **Audit integrity.** Open audit log. Show the visual hash chain — green links. "Every decision is hash-chained. If anyone alters a record, the chain breaks." Simulate tampering. Red link, mismatched hashes. "It tells you exactly where." Download audit package. "Evidence can be extracted for external review."
+    10. **Fail closed.** Simulate component failure (force one OPA call to fail). The event feed shows an action arrive, policy decision stage shows "policy engine unreachable," decision is `fail_closed`. Next event runs normally. "If anything in the system fails, the default is stop. Never allow." *(Requires: a "Simulate policy engine failure" button on the event feed or settings page that sets a one-shot flag causing the next `opa_client` call to raise a connection error instead of calling OPA. This is ~10 lines of code: a flag in the settings store, a check in `opa_client.py`, a button in the UI, and the flag auto-resets after one use.)*
+  - **Demo script pacing:** The full sequence should take 12–15 minutes. Each beat answers a different buyer question. The order is: calm → routine → enforcement → human oversight → semantic evidence → shadow mode → policy control → threshold → audit → fail-safe.
+  - **Three minor code additions may be needed to support the script** (noted with *(Requires:...)*  above). These are each under 30 minutes of work and should be implemented during T21, not as separate tasks:
+    1. Aggregate stats cards on the dashboard (SQL counts + template section)
+    2. Shadow-mode callout in the decision view (if not already rendering clearly)
+    3. One-shot OPA failure simulation (flag + button + auto-reset)
+- **Done when:** a stranger can `docker compose up` and run the demo from the script alone; the narration covers all ten beats in the specified order; all three minor code additions work; the "what's real vs stubbed" honesty list is present in the README; tone is right for the room.
+- **Verify:** follow your own README on a clean checkout; run the demo from the script, hitting every beat. Confirm shadow mode renders clearly. Confirm fail-closed simulation works and auto-resets. Confirm aggregate stats update after running scenarios.
+- **Reviewer focus:** the demo script must not read like a feature walkthrough — it must read like a story about operational assurance. Each beat should answer an implicit buyer question ("does it work?", "does it catch things?", "what if I need a human?", "can I observe first?", "who controls the policy?", "can I trust the evidence?", "what if something fails?"). The three minor code additions must not break existing behaviour. The "what's real vs stubbed" honesty list is present and accurate.
 
 ---
 
 ## Parallelisation notes
 - T17 can run alongside T15/T16.
-- T20 test files can be written incrementally as each component lands (don't wait for the end).
+- **T22, T23, and T25 can run in parallel** (no dependencies on each other).
+- **T24 depends on T22** (for pipeline trace linkage).
+- T20 depends on T22 and T23 (test suite must cover new behaviour).
+- T21 depends on all Phase 3B tasks (demo script must narrate new features).
 - Everything else is linear by dependency.
+
+---
+
+## Effort estimates (Phase 3B + Phase 4)
+
+| Task | Effort | Notes |
+|------|--------|-------|
+| T22 — Live event feed | 2–3 days | SSE plumbing simple; background event pool is the work |
+| T23 — Policy rule editor | 1–1.5 days | Rego changes small; settings store moderate |
+| T24 — Escalation polish | 0.5–1 day | Template + route work on existing infra |
+| T25 — Audit security | 0.5–1 day | Template work + small export function |
+| T20 — Test suite | 1–1.5 days | Extended to cover T22/T23 |
+| T21 — README + demo script | 1–1.5 days | Includes three minor code additions + full narration |
+| **Total** | **~7–10 days** | Discipline required — do not let T22 or T23 expand |

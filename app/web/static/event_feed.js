@@ -57,7 +57,7 @@
 
     var details = document.createElement("div");
     details.className = "trace-timeline";
-    details.style.display = "none";
+    details.style.display = "block";
     (payload.trace || []).forEach(function (stage) {
       details.appendChild(renderTraceStage(stage));
     });

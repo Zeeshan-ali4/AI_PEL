@@ -206,6 +206,13 @@ class PolicyPipeline:
             decision = self._decide(action, context, evidence, config)
             outputs["decision"] = decision.decision.value
             outputs["control_id"] = decision.control_id
+            outputs["triggered_controls"] = list(decision.triggered_controls)
+            outputs["reason"] = decision.reason
+            outputs["required_approval_role"] = decision.required_approval_role
+            outputs["framework_mappings"] = list(decision.framework_mappings)
+            outputs["failure_mode"] = decision.failure_mode.value
+            outputs["logging_requirements"] = decision.logging_requirements.value
+            outputs["policy_version"] = decision.policy_version
             outputs["threshold_used"] = decision.threshold_used
 
         with recorder.stage("enforce", {"enforcement_mode": action.enforcement_mode.value}) as outputs:

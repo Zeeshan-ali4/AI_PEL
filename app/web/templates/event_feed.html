@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% set active_nav = "events" %}
+{% block title %}Live event feed — AI PEL Assurance Gate{% endblock %}
+
+{% block content %}
+<section class="intro">
+  <h1>Live event feed</h1>
+  <p>
+    Pick a scenario to watch it run live. A burst of routine background actions streams through
+    the real pipeline first — normalised, context-resolved, evaluated, enforced, and
+    audit-written — followed by the focal scenario event, shown with full visual emphasis and
+    its complete pipeline trace.
+  </p>
+</section>
+
+<div class="scenario-grid">
+  {% for card in cards %}
+  <article class="scenario-card">
+    <div>
+      <h2>Scenario {{ card.number }}: {{ card.title }}</h2>
+      <p>{{ card.summary }}</p>
+    </div>
+    <a href="/events/{{ card.number }}" class="btn btn-primary" style="display:block; text-align:center; text-decoration:none;">
+      Run scenario {{ card.number }} live
+    </a>
+  </article>
+  {% endfor %}
+</div>
+
+{% if scenario_id %}
+<section class="card" style="margin-top: 1.75rem;" id="event-feed-section" data-scenario-id="{{ scenario_id }}" data-stream-url="/run/{{ scenario_id }}/stream">
+  <h2>Scenario {{ scenario_id }}: {{ scenario_title }} — live run</h2>
+  <p class="card-note">
+    Routine background events stream in first as compact rows, then the focal event lands last
+    with visual emphasis. Click the focal row to expand its full pipeline trace.
+  </p>
+
+  <div id="event-feed-list" class="event-feed-list" aria-live="polite"></div>
+  <p id="event-feed-status" class="card-note" style="margin-top: 0.75rem;">Connecting to the live feed&hellip;</p>
+</section>
+{% endif %}
+
+<script src="/static/event_feed.js"></script>
+{% endblock %}

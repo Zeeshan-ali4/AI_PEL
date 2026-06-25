@@ -91,31 +91,34 @@ def _email_template(index: int, customer_id: str, recipient: str, recipient_type
     }
 
 
-def _build_pool() -> tuple[dict[str, Any], ...]:
-    """Build a deterministic pool of 20–25 boring background templates."""
-
-    templates: list[dict[str, Any]] = []
+def _add_payment_templates(templates: list[dict[str, Any]], target_size: int) -> None:
     index = 0
     for customer_id in _SAFE_CUSTOMER_IDS:
         for amount in _SAFE_PAYMENT_AMOUNTS:
             reason = _PAYMENT_REASONS[index % len(_PAYMENT_REASONS)]
             templates.append(_payment_template(index, customer_id, amount, reason))
             index += 1
-            if len(templates) >= 14:
-                break
-        if len(templates) >= 14:
-            break
+            if len(templates) >= target_size:
+                return
 
+
+def _add_email_templates(templates: list[dict[str, Any]], target_size: int) -> None:
     email_index = 0
     for customer_id in _SAFE_CUSTOMER_IDS:
         for recipient, recipient_type in _SAFE_EMAIL_RECIPIENTS:
             body = _SAFE_EMAIL_BODIES[email_index % len(_SAFE_EMAIL_BODIES)]
             templates.append(_email_template(email_index, customer_id, recipient, recipient_type, body))
             email_index += 1
-            if len(templates) >= 24:
-                break
-        if len(templates) >= 24:
-            break
+            if len(templates) >= target_size:
+                return
+
+
+def _build_pool() -> tuple[dict[str, Any], ...]:
+    """Build a deterministic pool of 20–25 boring background templates."""
+
+    templates: list[dict[str, Any]] = []
+    _add_payment_templates(templates, target_size=14)
+    _add_email_templates(templates, target_size=24)
 
     return tuple(templates)
 

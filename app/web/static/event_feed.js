@@ -4,7 +4,7 @@
 (function () {
   "use strict";
 
-  var DECISION_BADGE = {
+  const DECISION_BADGE = {
     allow: "decision-allow",
     allow_with_logging: "decision-info",
     escalate: "decision-warn",
@@ -19,7 +19,7 @@
   }
 
   function renderBackgroundRow(payload) {
-    var row = document.createElement("div");
+    const row = document.createElement("div");
     row.className = "event-row event-row-background";
     row.innerHTML =
       '<span class="event-row-index">' + payload.event_index + "/" + payload.total_events + "</span>" +
@@ -29,10 +29,10 @@
   }
 
   function renderTraceStage(stage) {
-    var card = document.createElement("div");
+    const card = document.createElement("div");
     card.className = "trace-stage-card";
-    var inputs = JSON.stringify(stage.inputs_summary, null, 0);
-    var outputs = JSON.stringify(stage.outputs_summary, null, 0);
+    const inputs = JSON.stringify(stage.inputs_summary, null, 0);
+    const outputs = JSON.stringify(stage.outputs_summary, null, 0);
     card.innerHTML =
       '<div class="trace-stage-header"><strong>' + escapeHtml(stage.stage_name) + '</strong>' +
       '<span class="card-note">' + stage.duration_ms.toFixed(1) + ' ms</span></div>' +
@@ -42,10 +42,10 @@
   }
 
   function renderFocalRow(payload) {
-    var wrapper = document.createElement("div");
+    const wrapper = document.createElement("div");
     wrapper.className = "event-row event-row-focal " + badgeClass(payload.decision);
 
-    var summary = document.createElement("button");
+    const summary = document.createElement("button");
     summary.type = "button";
     summary.className = "event-row-focal-summary";
     summary.innerHTML =
@@ -55,7 +55,7 @@
       escapeHtml(payload.decision) + (payload.control_id ? " — " + escapeHtml(payload.control_id) : "") +
       "</span>";
 
-    var details = document.createElement("div");
+    const details = document.createElement("div");
     details.className = "trace-timeline";
     details.style.display = "block";
     (payload.trace || []).forEach(function (stage) {
@@ -72,24 +72,24 @@
   }
 
   function escapeHtml(value) {
-    var div = document.createElement("div");
+    const div = document.createElement("div");
     div.textContent = String(value);
     return div.innerHTML;
   }
 
   function init() {
-    var section = document.getElementById("event-feed-section");
+    const section = document.getElementById("event-feed-section");
     if (!section) {
       return;
     }
-    var list = document.getElementById("event-feed-list");
-    var statusEl = document.getElementById("event-feed-status");
-    var streamUrl = section.getAttribute("data-stream-url");
+    const list = document.getElementById("event-feed-list");
+    const statusEl = document.getElementById("event-feed-status");
+    const streamUrl = section.dataset.streamUrl;
 
-    var source = new EventSource(streamUrl);
+    const source = new EventSource(streamUrl);
 
     source.onmessage = function (event) {
-      var payload = JSON.parse(event.data);
+      const payload = JSON.parse(event.data);
       if (payload.is_focal) {
         list.appendChild(renderFocalRow(payload));
         statusEl.textContent = "Focal event landed: " + payload.decision + (payload.control_id ? " (" + payload.control_id + ")" : "") + ".";

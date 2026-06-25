@@ -26,3 +26,19 @@ def test_event_feed_page_loads_and_references_static_eventsource_js(wired_pipeli
     assert "decision-allow" in body
     assert "decision-warn" in body
     assert "decision-block" in body
+
+
+def test_event_feed_is_discoverable_from_primary_nav_and_scenario_cards(wired_pipeline):
+    client = TestClient(app)
+
+    dashboard = client.get("/")
+    assert dashboard.status_code == 200
+    assert 'href="/events"' in dashboard.text
+    assert "Live Feed" in dashboard.text
+
+    scenarios = client.get("/scenarios")
+    assert scenarios.status_code == 200
+    assert 'href="/events/3"' in scenarios.text
+    assert "Run scenario 3 live feed" in scenarios.text
+    assert 'action="/scenarios/3/run"' in scenarios.text
+    assert "Run decision view only" in scenarios.text

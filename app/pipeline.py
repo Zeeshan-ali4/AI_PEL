@@ -7,8 +7,11 @@ fail-closed cases permitted by the spec when required context/sensors/OPA fail.
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any
+from datetime import UTC, datetime
+from time import perf_counter
+from typing import Any, Iterator
 
 from app.audit.store import AuditStore, get_audit_store
 from app.context import resolver as context_resolver
@@ -37,11 +40,79 @@ class UnknownScenarioError(ValueError):
 
 
 @dataclass(frozen=True)
+class TraceStage:
+    """One stage's real, observed inputs/outputs for the T22 pipeline trace.
+
+    Captured by `_StageRecorder` as each pipeline step actually runs; summaries
+    are derived from the real objects produced by that step, never hardcoded.
+    """
+
+    stage_name: str
+    timestamp: str
+    duration_ms: float
+    inputs_summary: dict[str, Any]
+    outputs_summary: dict[str, Any]
+
+    def to_json(self) -> dict[str, Any]:
+        return {
+            "stage_name": self.stage_name,
+            "timestamp": self.timestamp,
+            "duration_ms": round(self.duration_ms, 3),
+            "inputs_summary": self.inputs_summary,
+            "outputs_summary": self.outputs_summary,
+        }
+
+
+@dataclass
+class PipelineTrace:
+    """An ordered, stage-by-stage record of one pipeline run (T22)."""
+
+    stages: list[TraceStage] = field(default_factory=list)
+
+    def to_json(self) -> list[dict[str, Any]]:
+        return [stage.to_json() for stage in self.stages]
+
+
+class _StageRecorder:
+    """Records stage timing/inputs/outputs into an optional `PipelineTrace`.
+
+    When `trace` is `None` this degrades to a no-op context manager so existing
+    callers (T13's JSON/HTML routes) pay no cost and see no behaviour change.
+    """
+
+    def __init__(self, trace: PipelineTrace | None) -> None:
+        self.trace = trace
+
+    @contextmanager
+    def stage(self, stage_name: str, inputs_summary: dict[str, Any]) -> Iterator[dict[str, Any]]:
+        outputs_summary: dict[str, Any] = {}
+        if self.trace is None:
+            yield outputs_summary
+            return
+        started_at = perf_counter()
+        timestamp = datetime.now(UTC).isoformat()
+        try:
+            yield outputs_summary
+        finally:
+            duration_ms = (perf_counter() - started_at) * 1000
+            self.trace.stages.append(
+                TraceStage(
+                    stage_name=stage_name,
+                    timestamp=timestamp,
+                    duration_ms=duration_ms,
+                    inputs_summary=inputs_summary,
+                    outputs_summary=dict(outputs_summary),
+                )
+            )
+
+
+@dataclass(frozen=True)
 class PipelineResult:
     """Structured result returned by one full pipeline run."""
 
     record: EvidenceRecord
     enforcement_outcome: Any
+    trace: PipelineTrace | None = None
 
     @property
     def decision(self) -> Decision:
@@ -71,47 +142,132 @@ class PolicyPipeline:
     sdk_wrapper: SDKWrapper = field(default_factory=SDKWrapper)
     opa_url: str | None = None
 
-    def run_scenario(self, scenario_id: int) -> PipelineResult:
+    def run_scenario(self, scenario_id: int, *, capture_trace: bool = False) -> PipelineResult:
         """Run one canonical scenario number through the full policy gate."""
 
         try:
             raw_tool_call = get_raw_tool_call(scenario_id)
         except ValueError as exc:
             raise UnknownScenarioError(str(exc)) from exc
-        intercepted_call = self.sdk_wrapper.call_tool(raw_tool_call)
-        return self.run_raw_tool_call(intercepted_call)
+        return self.run_event(raw_tool_call, capture_trace=capture_trace)
 
-    def run_raw_tool_call(self, raw_tool_call: dict[str, Any]) -> PipelineResult:
-        """Run one already-intercepted raw tool call through the pipeline."""
+    def run_event(self, raw_tool_call: dict[str, Any], *, capture_trace: bool = False) -> PipelineResult:
+        """Intercept a raw tool call (scenario or background event) and run it
+        through the full pipeline, optionally capturing a `PipelineTrace`."""
 
-        action = normalise(raw_tool_call)
-        context = context_resolver.resolve(
-            action,
-            force_failure=bool(raw_tool_call.get("force_context_failure", False)),
-        )
-        evidence = self._build_evidence(action)
+        trace = PipelineTrace() if capture_trace else None
+        recorder = _StageRecorder(trace)
+        with recorder.stage(
+            "intercept",
+            {"tool_name": raw_tool_call.get("tool_name"), "scenario_id": raw_tool_call.get("scenario_id")},
+        ) as outputs:
+            intercepted_call = self.sdk_wrapper.call_tool(raw_tool_call)
+            outputs["intercepted"] = True
+        return self.run_raw_tool_call(intercepted_call, capture_trace=trace, _recorder=recorder)
+
+    def run_raw_tool_call(
+        self,
+        raw_tool_call: dict[str, Any],
+        *,
+        capture_trace: bool | PipelineTrace | None = False,
+        _recorder: "_StageRecorder | None" = None,
+    ) -> PipelineResult:
+        """Run one already-intercepted raw tool call through the pipeline.
+
+        `capture_trace` accepts a bare `bool` (back-compat default `False`) or
+        an existing `PipelineTrace` to append to (used internally by
+        `run_event`, which has already recorded the `intercept` stage).
+        """
+
+        trace = capture_trace if isinstance(capture_trace, PipelineTrace) else (PipelineTrace() if capture_trace else None)
+        recorder = _recorder if _recorder is not None else _StageRecorder(trace)
+
+        with recorder.stage("normalise", {"tool_name": raw_tool_call.get("tool_name")}) as outputs:
+            action = normalise(raw_tool_call)
+            outputs["action_type"] = action.action_type.value
+            outputs["correlation_id"] = str(action.correlation_id)
+
+        with recorder.stage("resolve_context", {"resource_id": action.resource.id}) as outputs:
+            context = context_resolver.resolve(
+                action,
+                force_failure=bool(raw_tool_call.get("force_context_failure", False)),
+            )
+            outputs["context_resolution_ok"] = context.context_resolution_ok
+            outputs["customer_status"] = context.customer.status.value
+
+        evidence = self._build_evidence_traced(action, recorder)
+
         settings = self.settings_store.read_settings()
         config = settings.to_policy_config()
 
-        decision = self._decide(action, context, evidence, config)
-        outcome = enforce(
-            decision,
-            action.enforcement_mode,
-            approval_queue=self.approval_queue,
-            control_modes={key: EnforcementMode(value) for key, value in settings.control_modes.items()},
-            correlation_id=str(action.correlation_id),
-        )
-        record = self.audit_store.write_record(
-            action=action,
-            context_used=context,
-            evidence=evidence,
-            decision=decision,
-            enforcement_mode=action.enforcement_mode,
-            executed=outcome.executed,
-            record_type=RecordType.ACTION_EVALUATION,
-            correlation_id=action.correlation_id,
-        )
-        return PipelineResult(record=record, enforcement_outcome=outcome)
+        with recorder.stage(
+            "policy_decision", {"threshold": config.get("high_confidence_threshold")}
+        ) as outputs:
+            decision = self._decide(action, context, evidence, config)
+            outputs["decision"] = decision.decision.value
+            outputs["control_id"] = decision.control_id
+            outputs["triggered_controls"] = list(decision.triggered_controls)
+            outputs["reason"] = decision.reason
+            outputs["required_approval_role"] = decision.required_approval_role
+            outputs["framework_mappings"] = list(decision.framework_mappings)
+            outputs["failure_mode"] = decision.failure_mode.value
+            outputs["logging_requirements"] = decision.logging_requirements.value
+            outputs["policy_version"] = decision.policy_version
+            outputs["threshold_used"] = decision.threshold_used
+
+        with recorder.stage("enforce", {"enforcement_mode": action.enforcement_mode.value}) as outputs:
+            outcome = enforce(
+                decision,
+                action.enforcement_mode,
+                approval_queue=self.approval_queue,
+                control_modes={key: EnforcementMode(value) for key, value in settings.control_modes.items()},
+                correlation_id=str(action.correlation_id),
+            )
+            outputs["executed"] = outcome.executed
+            outputs["queued"] = outcome.queued
+
+        with recorder.stage("audit_write", {"record_type": RecordType.ACTION_EVALUATION.value}) as outputs:
+            record = self.audit_store.write_record(
+                action=action,
+                context_used=context,
+                evidence=evidence,
+                decision=decision,
+                enforcement_mode=action.enforcement_mode,
+                executed=outcome.executed,
+                record_type=RecordType.ACTION_EVALUATION,
+                correlation_id=action.correlation_id,
+            )
+            outputs["record_hash"] = record.record_hash
+            outputs["record_id"] = record.id
+
+        return PipelineResult(record=record, enforcement_outcome=outcome, trace=trace)
+
+    def _build_evidence_traced(self, action, recorder: "_StageRecorder") -> Evidence:
+        """Build evidence inside a `semantic_evidence`/`semantic_skipped` trace stage."""
+
+        if action.action_type != ActionType.COMMUNICATION_EMAIL_SEND:
+            with recorder.stage(
+                "semantic_skipped",
+                {"action_type": action.action_type.value},
+            ) as outputs:
+                evidence = self._build_evidence(action)
+                outputs["evaluated"] = evidence.evaluated
+                outputs["note"] = "Semantic layer not invoked - structured action."
+            return evidence
+
+        with recorder.stage("semantic_evidence", {"action_type": action.action_type.value}) as outputs:
+            evidence = self._build_evidence(action)
+            outputs["evaluated"] = evidence.evaluated
+            outputs["contains_special_category_data"] = evidence.contains_special_category_data
+            outputs["detected_entities"] = [
+                {"type": entity.type, "score": entity.score, "source": entity.source.value}
+                for entity in evidence.detected_entities
+            ]
+            outputs["vulnerability_present"] = evidence.vulnerability_indicators.present
+            outputs["vulnerability_confidence"] = evidence.vulnerability_indicators.confidence
+            outputs["vulnerability_source"] = evidence.vulnerability_indicators.source.value
+            outputs["overall_confidence"] = evidence.overall_confidence
+        return evidence
 
     def _build_evidence(self, action) -> Evidence:
         """Build semantic evidence, preserving the payment path's unevaluated evidence."""

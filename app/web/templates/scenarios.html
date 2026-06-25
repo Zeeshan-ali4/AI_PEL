@@ -21,9 +21,15 @@
       <p>{{ card.summary }}</p>
     </div>
     {# nosemgrep: python.django.security.django-no-csrf-token.django-no-csrf-token -- FastAPI app, not Django; no session/cookie auth backs this unauthenticated demo endpoint, so a CSRF token would have nothing to validate against #}
-    <form method="post" action="/scenarios/{{ card.number }}/run">
-      <button type="submit" class="btn btn-primary">Run scenario {{ card.number }}</button>
-    </form>
+    <div style="display: grid; gap: 0.5rem;">
+      <a href="/events/{{ card.number }}" class="btn btn-primary" style="display:block; text-align:center; text-decoration:none;">
+        Run scenario {{ card.number }} live feed
+      </a>
+      {# nosemgrep: python.django.security.django-no-csrf-token.django-no-csrf-token -- FastAPI app, not Django; no session/cookie auth backs this unauthenticated demo endpoint, so a CSRF token would have nothing to validate against #}
+      <form method="post" action="/scenarios/{{ card.number }}/run">
+        <button type="submit" class="btn btn-secondary" style="width: 100%;">Run decision view only</button>
+      </form>
+    </div>
   </article>
   {% endfor %}
 </div>

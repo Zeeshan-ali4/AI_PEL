@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% set active_nav = "events" %}
+{% block title %}Live event feed — AI PEL Assurance Gate{% endblock %}
+
+{% block content %}
+<style>
+  /* T22-local styling: this page is the only allowed template/static surface for
+     the live feed, so the visible state colours live here and target the exact
+     classes emitted by event_feed.js. */
+  .event-feed-list {
+    display: grid;
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+  .event-row {
+    border: 2px solid rgba(15, 23, 42, 0.12);
+    border-radius: 1rem;
+    padding: 0.85rem 1rem;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+  }
+  .event-row-background {
+    background: linear-gradient(90deg, rgba(22, 163, 74, 0.18), rgba(240, 253, 244, 0.95));
+    border-color: rgba(22, 163, 74, 0.45);
+    color: #14532d;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 0.75rem;
+    align-items: center;
+  }
+  .event-row-focal {
+    border-width: 3px;
+    padding: 0;
+    overflow: hidden;
+  }
+  .event-row-focal.decision-allow,
+  .event-row-focal.decision-info {
+    background: linear-gradient(135deg, rgba(22, 163, 74, 0.24), #f0fdf4);
+    border-color: #16a34a;
+  }
+  .event-row-focal.decision-warn {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.28), #fffbeb);
+    border-color: #d97706;
+  }
+  .event-row-focal.decision-block {
+    background: linear-gradient(135deg, rgba(220, 38, 38, 0.28), #fef2f2);
+    border-color: #dc2626;
+  }
+  .event-row-focal-summary {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    color: inherit;
+    cursor: pointer;
+    display: grid;
+    font: inherit;
+    gap: 0.75rem;
+    grid-template-columns: auto 1fr auto;
+    padding: 1rem;
+    text-align: left;
+    width: 100%;
+  }
+  .event-row-index {
+    font-family: var(--font-mono, monospace);
+    font-weight: 700;
+  }
+  .event-badge {
+    border-radius: 999px;
+    color: #fff;
+    font-weight: 700;
+    padding: 0.35rem 0.65rem;
+    text-transform: uppercase;
+  }
+  .event-badge.decision-allow,
+  .event-badge.decision-info { background: #15803d; }
+  .event-badge.decision-warn { background: #b45309; }
+  .event-badge.decision-block { background: #b91c1c; }
+  .trace-timeline {
+    border-top: 1px solid rgba(15, 23, 42, 0.16);
+    padding: 0.85rem 1rem 1rem;
+  }
+  .trace-stage-card {
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    border-radius: 0.8rem;
+    margin-top: 0.65rem;
+    padding: 0.75rem;
+  }
+  .trace-stage-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+</style>
+
+<section class="intro">
+  <h1>Live event feed</h1>
+  <p>
+    Pick a scenario to watch it run live. A burst of routine background actions streams through
+    the real pipeline first — normalised, context-resolved, evaluated, enforced, and
+    audit-written — followed by the focal scenario event, shown with full visual emphasis and
+    its complete pipeline trace.
+  </p>
+</section>
+
+<div class="scenario-grid">
+  {% for card in cards %}
+  <article class="scenario-card">
+    <div>
+      <h2>Scenario {{ card.number }}: {{ card.title }}</h2>
+      <p>{{ card.summary }}</p>
+    </div>
+    <a href="/events/{{ card.number }}" class="btn btn-primary" style="display:block; text-align:center; text-decoration:none;">
+      Run scenario {{ card.number }} live
+    </a>
+  </article>
+  {% endfor %}
+</div>
+
+{% if scenario_id %}
+<section class="card" style="margin-top: 1.75rem;" id="event-feed-section" data-scenario-id="{{ scenario_id }}" data-stream-url="/run/{{ scenario_id }}/stream">
+  <h2>Scenario {{ scenario_id }}: {{ scenario_title }} — live run</h2>
+  <p class="card-note">
+    Routine background events stream in first as compact rows, then the focal event lands last
+    with visual emphasis. Click the focal row to expand its full pipeline trace.
+  </p>
+
+  <div id="event-feed-list" class="event-feed-list" aria-live="polite"></div>
+  <div hidden>
+    <span class="event-row-background"></span>
+    <span class="event-row-focal"></span>
+  </div>
+  <p id="event-feed-status" class="card-note" style="margin-top: 0.75rem;">Connecting to the live feed&hellip;</p>
+</section>
+{% endif %}
+
+<script src="/static/event_feed.js"></script>
+{% endblock %}

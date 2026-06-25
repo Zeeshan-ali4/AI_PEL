@@ -6,18 +6,21 @@ from __future__ import annotations
 
 import html
 import json
+import time
+from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Form, HTTPException, Request, status
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
 from app.context import resolver as context_resolver
 from app.normaliser.normaliser import normalise
 from app.pipeline import PipelineResult, UnknownScenarioError, get_pipeline
 from app.policy import opa_client
+from app.scenarios.background_events import sample_background_events
 from app.schemas.action import Action, ActionType
 from app.schemas.audit import EvidenceRecord, RecordType
 from app.schemas.context import Context
@@ -219,6 +222,123 @@ def run_scenario_view(request: Request, scenario_id: int) -> HTMLResponse:
         ) from exc
     context = _build_decision_view_context(scenario_id, result)
     return templates.TemplateResponse(request, "decision.html", context)
+
+
+# T22 live event feed: a small delay between streamed background events gives
+# the feed visual pacing in a real browser. Tests monkeypatch this module
+# attribute to 0 so the SSE acceptance tests stay fast.
+EVENT_STREAM_DELAY_SECONDS = 0.25
+
+
+def _event_feed_cards() -> list[dict[str, Any]]:
+    return [
+        {
+            "number": scenario["number"],
+            "title": scenario["title"],
+            "summary": SCENARIO_SUMMARIES.get(scenario["number"], scenario["title"]),
+        }
+        for scenario in get_scenarios()
+    ]
+
+
+@router.get("/events", response_class=HTMLResponse)
+def event_feed_index(request: Request) -> HTMLResponse:
+    """Render the T22 live event feed landing page: pick a scenario to run live."""
+
+    return templates.TemplateResponse(
+        request,
+        "event_feed.html",
+        {"cards": _event_feed_cards(), "scenario_id": None, "scenario_title": None},
+    )
+
+
+@router.get("/events/{scenario_id}", response_class=HTMLResponse)
+def event_feed_for_scenario(request: Request, scenario_id: int) -> HTMLResponse:
+    """Render the live feed UI pre-armed to stream one scenario's background traffic + focal event."""
+
+    try:
+        get_raw_tool_call(scenario_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return templates.TemplateResponse(
+        request,
+        "event_feed.html",
+        {
+            "cards": _event_feed_cards(),
+            "scenario_id": scenario_id,
+            "scenario_title": _scenario_title(scenario_id),
+        },
+    )
+
+
+def _sse_payload(payload: dict[str, Any]) -> str:
+    """Format one SSE `data:` frame carrying a JSON event payload."""
+
+    return f"data: {json.dumps(payload)}\n\n"
+
+
+def _background_event_payload(index: int, total_events: int, result: PipelineResult) -> dict[str, Any]:
+    action = result.record.action
+    decision = result.decision
+    return {
+        "event_index": index,
+        "total_events": total_events,
+        "is_focal": False,
+        "action_summary": _action_summary(action),
+        "decision": decision.decision.value,
+        "control_id": decision.control_id,
+    }
+
+
+def _focal_event_payload(index: int, total_events: int, result: PipelineResult) -> dict[str, Any]:
+    action = result.record.action
+    decision = result.decision
+    return {
+        "event_index": index,
+        "total_events": total_events,
+        "is_focal": True,
+        "action_summary": _action_summary(action),
+        "decision": decision.decision.value,
+        "control_id": decision.control_id,
+        "required_approval_role": decision.required_approval_role,
+        "reason": decision.reason,
+        "framework_mappings": decision.framework_mappings,
+        "threshold_used": decision.threshold_used,
+        "record_hash": result.record.record_hash,
+        "trace": result.trace.to_json() if result.trace is not None else [],
+    }
+
+
+def _stream_scenario_events(scenario_id: int) -> Iterator[str]:
+    """Run 8-12 boring background events then the focal scenario through the real
+    pipeline, yielding one SSE frame per event (spec T22; this never fakes a
+    pipeline run — every event is normalised, resolved, evaluated, enforced,
+    and audit-written for real)."""
+
+    pipeline = get_pipeline()
+    background_events = sample_background_events()
+    total_events = len(background_events) + 1
+
+    for index, raw_event in enumerate(background_events, start=1):
+        result = pipeline.run_event(raw_event, capture_trace=False)
+        yield _sse_payload(_background_event_payload(index, total_events, result))
+        if EVENT_STREAM_DELAY_SECONDS:
+            time.sleep(EVENT_STREAM_DELAY_SECONDS)
+
+    focal_result = pipeline.run_scenario(scenario_id, capture_trace=True)
+    yield _sse_payload(_focal_event_payload(total_events, total_events, focal_result))
+
+
+@router.get("/run/{scenario_id}/stream")
+def run_scenario_stream(scenario_id: int) -> StreamingResponse:
+    """SSE endpoint streaming background traffic + the focal scenario through the
+    real pipeline (spec T22)."""
+
+    try:
+        get_raw_tool_call(scenario_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return StreamingResponse(_stream_scenario_events(scenario_id), media_type="text/event-stream")
 
 
 def _scenario_title(scenario_id: int) -> str:

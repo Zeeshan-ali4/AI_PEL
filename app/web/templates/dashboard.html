@@ -1,88 +1,185 @@
 {% extends "base.html" %}
 
+{% set active_nav = "dashboard" %}
 {% block title %}Control dashboard — AI PEL Assurance Gate{% endblock %}
 
+{% set active_mode = rows[0].mode if rows else "shadow" %}
+{% block header_status %}
+<span class="mode-chip mode-chip-{{ active_mode }}">
+  <span class="status-dot" aria-hidden="true"></span>
+  {{ active_mode }} mode
+</span>
+{% endblock %}
+
 {% block content %}
-<section class="mb-8">
-  <h1 class="text-3xl font-semibold tracking-tight">Control dashboard</h1>
-  <p class="mt-2 max-w-2xl text-slate-600">
-    Every control the gate enforces, the framework it answers to, the mode it currently runs in, and the
-    live counts of decisions it has produced. This is the board-ready view of the policy gate.
+{% set totals = namespace(allowed=0, escalated=0, blocked=0, logged=0) %}
+{% for row in rows %}
+  {% set totals.allowed = totals.allowed + row.counts.allowed %}
+  {% set totals.escalated = totals.escalated + row.counts.escalated %}
+  {% set totals.blocked = totals.blocked + row.counts.blocked %}
+  {% set totals.logged = totals.logged + row.counts.logged %}
+{% endfor %}
+
+<section class="page-heading" aria-labelledby="dashboard-title">
+  <h1 id="dashboard-title">Control Dashboard</h1>
+  <p>
+    Every control the gate enforces, the framework it answers to, the mode it runs in,
+    and live decision counts. This is the board-ready view of the policy gate.
   </p>
 </section>
 
-<section id="auditable-surface" class="mb-8 rounded-xl border border-slate-200 bg-white p-6">
-  <h2 class="text-lg font-semibold">Auditable surface</h2>
-  <p class="mt-2 text-slate-700">
-    This session: <strong>{{ agent_steps_total }} agent steps</strong> (illustrative, simulated), and
-    <strong>{{ gated_total }} consequential action{{ "s" if gated_total != 1 else "" }} gated and fully
-    evidenced</strong>.
-  </p>
-  <p class="mt-2 text-sm text-slate-500">
-    The gate logs proposed consequential actions and the binding decisions on them — this is the
-    auditable surface, not a complete, unauditable agent transcript. Full-transcript logging would store
-    many times more data with no added assurance of control.
-  </p>
+<section class="stat-grid" aria-label="Runtime policy enforcement summary">
+  <article class="stat-card">
+    <span class="stat-label">Agent steps this session</span>
+    <strong class="stat-value">{{ agent_steps_total }}</strong>
+    <span class="stat-note">illustrative</span>
+  </article>
+
+  <article class="stat-card stat-card-blue">
+    <span class="stat-label">Consequential actions gated</span>
+    <strong class="stat-value">{{ gated_total }}</strong>
+    <span class="stat-note">fully evidenced</span>
+  </article>
+
+  <article class="stat-card stat-card-amber">
+    <span class="stat-label">Awaiting human review</span>
+    <strong class="stat-value">{{ totals.escalated }}</strong>
+    <span class="stat-note">held — no action until reviewed</span>
+  </article>
+
+  <article class="stat-card stat-card-red">
+    <span class="stat-label">Actions blocked</span>
+    <strong class="stat-value">{{ totals.blocked }}</strong>
+    <span class="stat-note">prevented by gate</span>
+  </article>
 </section>
 
-<section id="enforcement-mode" class="mb-8 rounded-xl border border-slate-200 bg-white p-6">
-  <h2 class="text-lg font-semibold">Enforcement mode</h2>
-  <p class="mt-2 text-sm text-slate-500">
-    Sets every control listed below to the same mode. Risk owns this switch, not engineering.
-  </p>
+{% if totals.escalated > 0 %}
+<section class="review-alert" aria-label="Human review queue">
+  <div class="review-icon" aria-hidden="true">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" focusable="false">
+      <circle cx="8" cy="5" r="2.5" stroke="currentColor" stroke-width="1.5"/>
+      <path d="M2.5 13c0-2.485 2.462-4.5 5.5-4.5s5.5 2.015 5.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+  </div>
+  <div>
+    <strong>{{ totals.escalated }} escalated action{{ "s" if totals.escalated != 1 else "" }} awaiting named human review</strong>
+    <p>These actions have been intercepted and held. Nothing proceeds until a named reviewer approves or rejects each decision.</p>
+  </div>
+  <a href="/approvals" class="review-link">Review queue →</a>
+</section>
+{% endif %}
+
+<section id="enforcement-mode" class="panel mode-panel" aria-labelledby="mode-title">
+  <div class="panel-heading">
+    <span class="section-label">Enforcement Mode</span>
+    <h2 id="mode-title">Risk-owned operating state</h2>
+    <p>Sets every control below to the same mode. Risk owns this switch, not engineering.</p>
+  </div>
+
   {# nosemgrep: python.django.security.django-no-csrf-token.django-no-csrf-token -- FastAPI app, not Django; no session/cookie auth backs this unauthenticated demo endpoint, so a CSRF token would have nothing to validate against #}
-  <form method="post" action="/mode" class="mt-4 flex flex-wrap items-center gap-3">
-    {% for mode in valid_modes %}
-    <label class="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm">
-      <input type="radio" name="mode" value="{{ mode }}">
-      <span class="capitalize">{{ mode }}</span>
-    </label>
-    {% endfor %}
-    <button type="submit" class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white">
-      Apply mode
-    </button>
+  <form method="post" action="/mode" class="mode-form">
+    <div class="mode-grid" role="radiogroup" aria-label="Select enforcement mode">
+      {% for mode in valid_modes %}
+      <label class="mode-card">
+        <input type="radio" name="mode" value="{{ mode }}" {{ "checked" if mode == active_mode else "" }}>
+        <span class="mode-card-inner mode-card-{{ mode }}">
+          <span class="mode-card-title">
+            <span class="mode-dot" aria-hidden="true"></span>
+            <strong>{{ mode }}</strong>
+            {% if mode == active_mode %}<em>Active</em>{% endif %}
+          </span>
+          <span class="mode-description">
+            {% if mode == "full" %}
+              Every governed control is enforced. Actions are intercepted and blocked pending policy clearance.
+            {% elif mode == "soft" %}
+              An allow-listed subset of controls is enforced. The rest evaluate and record but always execute.
+            {% elif mode == "shadow" %}
+              All controls evaluate and record only. Nothing is intercepted — use for baselining prior to enforcement.
+            {% else %}
+              Apply this operating posture to every governed runtime control below.
+            {% endif %}
+          </span>
+        </span>
+      </label>
+      {% endfor %}
+    </div>
+    <button type="submit" class="primary-button">Apply mode</button>
   </form>
 </section>
 
-<section id="controls">
-  <h2 class="text-lg font-semibold mb-3">Controls</h2>
-  <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-    <table class="min-w-full divide-y divide-slate-200 text-sm">
-      <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-        <tr>
-          <th class="px-4 py-3">Control</th>
-          <th class="px-4 py-3">Purpose</th>
-          <th class="px-4 py-3">Tier</th>
-          <th class="px-4 py-3">Current mode</th>
-          <th class="px-4 py-3">Framework mappings (illustrative)</th>
-          <th class="px-4 py-3">Allowed</th>
-          <th class="px-4 py-3">Escalated</th>
-          <th class="px-4 py-3">Blocked</th>
-          <th class="px-4 py-3">Logged</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-slate-100">
-        {% for row in rows %}
-        <tr>
-          <td class="px-4 py-3 font-mono text-xs">{{ row.id }}</td>
-          <td class="px-4 py-3">{{ row.description }}</td>
-          <td class="px-4 py-3">{{ row.tier_label }}</td>
-          <td class="px-4 py-3 capitalize">{{ row.mode }}</td>
-          <td class="px-4 py-3">
-            <div class="flex flex-wrap gap-1">
-              {% for mapping in row.framework_mappings %}
-              <span class="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-700">{{ mapping }}</span>
-              {% endfor %}
-            </div>
-          </td>
-          <td class="px-4 py-3 text-center">{{ row.counts.allowed }}</td>
-          <td class="px-4 py-3 text-center">{{ row.counts.escalated }}</td>
-          <td class="px-4 py-3 text-center">{{ row.counts.blocked }}</td>
-          <td class="px-4 py-3 text-center">{{ row.counts.logged }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+<section id="auditable-surface" class="audit-note" aria-labelledby="audit-surface-title">
+  <div>
+    <h2 id="audit-surface-title">Auditable surface</h2>
+    <p>
+      This session: <strong>{{ agent_steps_total }} agent steps</strong> (illustrative), and
+      <strong>{{ gated_total }} consequential action{{ "s" if gated_total != 1 else "" }} gated and fully evidenced</strong>.
+    </p>
+    <p>
+      The gate logs proposed consequential actions and the binding decisions on them — this is the auditable surface.
+      Full-transcript logging would store many times more data with no added assurance of control.
+    </p>
   </div>
 </section>
+
+<section id="controls" class="controls-section" aria-labelledby="controls-title">
+  <div class="controls-header">
+    <div>
+      <span class="section-label">Control Inventory</span>
+      <h2 id="controls-title">Governed policies currently enforced at runtime</h2>
+    </div>
+    <span class="control-count">{{ rows|length }} controls registered</span>
+  </div>
+
+  <div class="table-shell">
+    <div class="table-scroll">
+      <table class="controls-table">
+        <thead>
+          <tr>
+            <th>Control</th>
+            <th>Purpose</th>
+            <th>Tier</th>
+            <th>Mode</th>
+            <th>Framework mappings</th>
+            <th class="numeric allowed">Allowed</th>
+            <th class="numeric escalated">Escalated</th>
+            <th class="numeric blocked">Blocked</th>
+            <th class="numeric logged">Logged</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr>
+            <td>
+              <span class="control-id">{{ row.id }}</span>
+            </td>
+            <td class="purpose-cell">{{ row.description }}</td>
+            <td>
+              <span class="tier-pill {% if 'Critical' in row.tier_label or 'critical' in row.tier_label or '1' in row.tier_label %}tier-critical{% elif 'High' in row.tier_label or 'high' in row.tier_label or '2' in row.tier_label %}tier-high{% endif %}">
+                {{ row.tier_label }}
+              </span>
+            </td>
+            <td>
+              <span class="row-mode mode-{{ row.mode }}">{{ row.mode }}</span>
+            </td>
+            <td>
+              <div class="mapping-list">
+                {% for mapping in row.framework_mappings %}
+                <span>{{ mapping }}</span>
+                {% endfor %}
+              </div>
+            </td>
+            <td class="numeric count-allowed">{{ row.counts.allowed }}</td>
+            <td class="numeric count-escalated">{{ row.counts.escalated }}</td>
+            <td class="numeric count-blocked">{{ row.counts.blocked }}</td>
+            <td class="numeric count-logged">{{ row.counts.logged }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<p class="demo-footer">Demonstration build — figures marked "illustrative" are simulated, not live agent telemetry.</p>
 {% endblock %}

@@ -59,5 +59,5 @@ def test_existing_run_routes_still_return_compatible_results(wired_pipeline):
 
     html = client.post("/scenarios/1/run")
     assert html.status_code == 200
-    assert "event-feed-section" in html.text
-    assert 'data-stream-url="/run/1/stream"' in html.text
+    assert 'data-decision="allow"' in html.text
+    assert "No control was triggered" in html.text

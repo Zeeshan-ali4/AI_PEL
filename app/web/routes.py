@@ -211,32 +211,25 @@ def scenarios_page(request: Request) -> HTMLResponse:
 
 @router.post("/scenarios/{scenario_id}/run", response_class=HTMLResponse)
 def run_scenario_view(request: Request, scenario_id: int) -> HTMLResponse:
-    """Open the live event feed for one canonical scenario from the existing
-    scenario runner flow.
+    """Run one canonical scenario through the full pipeline and render the T15
+    decision view (spec §8A item 2's "Run scenario" action contract).
 
-    T22 intentionally makes the existing "Run scenario" action land on the
-    live feed without editing the unlisted scenario-card template: the focal
-    event still uses `POST /run/{scenario_id}` for the legacy JSON contract,
-    while the human-facing runner now starts the SSE demonstration page.
+    The T22 live event feed is reachable additively via `GET /events` and
+    `GET /events/{scenario_id}`, which render the SSE demonstration page
+    without displacing this route's pre-existing decision-view contract.
     """
 
     try:
-        get_raw_tool_call(scenario_id)
+        result = get_pipeline().run_scenario(scenario_id)
     except UnknownScenarioError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     return templates.TemplateResponse(
         request,
-        "event_feed.html",
-        {
-            "cards": _event_feed_cards(),
-            "scenario_id": scenario_id,
-            "scenario_title": _scenario_title(scenario_id),
-        },
+        "decision.html",
+        _build_decision_view_context(scenario_id, result),
     )
 
 

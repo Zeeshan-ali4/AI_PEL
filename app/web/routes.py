@@ -136,18 +136,26 @@ def _build_control_rows(
     controls: dict[str, dict],
     control_modes: dict[str, str],
     records: list,
-) -> tuple[list[dict], int]:
+) -> tuple[list[dict], int, dict[str, int], dict[str, int]]:
     counts_by_control = {control_id: _empty_counts() for control_id in controls}
+    decision_breakdown = _empty_counts()
+    action_type_breakdown = {"payment": 0, "email": 0}
     gated_total = 0
 
     for record in records:
         if record.record_type != RecordType.ACTION_EVALUATION:
             continue
         gated_total += 1
+        if record.action.action_type == ActionType.FINANCIAL_PAYMENT_ISSUE:
+            action_type_breakdown["payment"] += 1
+        elif record.action.action_type == ActionType.COMMUNICATION_EMAIL_SEND:
+            action_type_breakdown["email"] += 1
         control_id = record.decision.control_id
         bucket = DECISION_TO_COUNT_BUCKET.get(record.decision.decision)
-        if bucket is not None and control_id in counts_by_control:
-            counts_by_control[control_id][bucket] += 1
+        if bucket is not None:
+            decision_breakdown[bucket] += 1
+            if control_id in counts_by_control:
+                counts_by_control[control_id][bucket] += 1
 
     rows = [
         {
@@ -161,7 +169,7 @@ def _build_control_rows(
         }
         for control_id, control in sorted(controls.items())
     ]
-    return rows, gated_total
+    return rows, gated_total, decision_breakdown, action_type_breakdown
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -172,7 +180,7 @@ def dashboard(request: Request) -> HTMLResponse:
     settings = pipeline.settings_store.read_settings()
     controls = _load_enabled_controls()
     records = pipeline.audit_store.read_records()
-    rows, gated_total = _build_control_rows(controls, settings.control_modes, records)
+    rows, gated_total, decision_breakdown, action_type_breakdown = _build_control_rows(controls, settings.control_modes, records)
 
     return templates.TemplateResponse(
         request,
@@ -180,6 +188,8 @@ def dashboard(request: Request) -> HTMLResponse:
         {
             "rows": rows,
             "gated_total": gated_total,
+            "decision_breakdown": decision_breakdown,
+            "action_type_breakdown": action_type_breakdown,
             "agent_steps_total": gated_total * AGENT_STEPS_PER_RUN,
             "valid_modes": sorted(VALID_ENFORCEMENT_MODES),
         },
@@ -541,6 +551,7 @@ def _build_decision_view_context(scenario_id: int, result: PipelineResult) -> di
         "stub_confidence": f"{vulnerability.confidence:.2f}",
         "stub_categories": [category.value for category in vulnerability.categories],
         "executed": record.executed,
+        "enforcement_mode": record.enforcement_mode.value,
         "would_have": outcome.would_have,
         "queued": outcome.queued,
     }
@@ -1036,6 +1047,7 @@ def settings_page(
             "valid_modes": sorted(VALID_ENFORCEMENT_MODES),
             "preview_threshold": chosen_preview,
             "impact": _build_impact_panel(settings.high_confidence_threshold, chosen_preview, settings.to_policy_config()),
+            "opa_failure_armed": settings.simulate_opa_failure_once,
             "saved": saved,
             "error": error,
         },
@@ -1103,3 +1115,11 @@ def update_control_parameter(control_id: str = Form(...), amount_threshold: floa
         )
     get_pipeline().settings_store.update_control_parameter(control_id, "amount_threshold", amount_threshold)
     return RedirectResponse(url="/settings?saved=parameter", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/settings/simulate-opa-failure")
+def simulate_opa_failure_once() -> RedirectResponse:
+    """Arm a labelled demo-only one-shot policy-engine failure simulation."""
+
+    get_pipeline().settings_store.arm_opa_failure_simulation()
+    return RedirectResponse(url="/settings?saved=opa_failure", status_code=status.HTTP_303_SEE_OTHER)

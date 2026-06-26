@@ -55,6 +55,7 @@ class RuntimeSettings(BaseModel):
     control_modes: dict[str, EnforcementMode]
     control_enabled: dict[str, bool] = Field(default_factory=lambda: dict(DEFAULT_CONTROL_ENABLED))
     parameters: dict[str, dict[str, Any]] = Field(default_factory=lambda: dict(DEFAULT_CONTROL_PARAMETERS))
+    simulate_opa_failure_once: bool = False
 
     model_config = ConfigDict(frozen=True)
 
@@ -101,6 +102,7 @@ class SettingsStore:
                 control_modes=dict(DEFAULT_CONTROL_MODES),
                 control_enabled=dict(DEFAULT_CONTROL_ENABLED),
                 parameters={control_id: dict(params) for control_id, params in DEFAULT_CONTROL_PARAMETERS.items()},
+                simulate_opa_failure_once=False,
             )
             self._insert_settings(settings)
         return settings
@@ -114,6 +116,7 @@ class SettingsStore:
             control_modes=dict(current.control_modes),
             control_enabled=dict(current.control_enabled),
             parameters={control_id: dict(params) for control_id, params in current.parameters.items()},
+            simulate_opa_failure_once=current.simulate_opa_failure_once,
         )
         self._update_settings(updated)
         return updated
@@ -133,6 +136,7 @@ class SettingsStore:
             control_modes=dict(current.control_modes),
             control_enabled=control_enabled,
             parameters={control_id: dict(params) for control_id, params in current.parameters.items()},
+            simulate_opa_failure_once=current.simulate_opa_failure_once,
         )
         self._update_settings(updated)
         return updated
@@ -149,6 +153,7 @@ class SettingsStore:
             control_modes=dict(current.control_modes),
             control_enabled=dict(current.control_enabled),
             parameters=parameters,
+            simulate_opa_failure_once=current.simulate_opa_failure_once,
         )
         self._update_settings(updated)
         return updated
@@ -164,6 +169,7 @@ class SettingsStore:
             control_modes=control_modes,
             control_enabled=dict(current.control_enabled),
             parameters={cid: dict(params) for cid, params in current.parameters.items()},
+            simulate_opa_failure_once=current.simulate_opa_failure_once,
         )
         self._update_settings(updated)
         return updated
@@ -177,9 +183,40 @@ class SettingsStore:
             control_modes=dict(control_modes),
             control_enabled=dict(current.control_enabled),
             parameters={cid: dict(params) for cid, params in current.parameters.items()},
+            simulate_opa_failure_once=current.simulate_opa_failure_once,
         )
         self._update_settings(updated)
         return updated
+
+    def arm_opa_failure_simulation(self) -> RuntimeSettings:
+        """Set the labelled demo-only flag that makes the next policy decision fail closed."""
+
+        current = self.read_settings()
+        updated = RuntimeSettings(
+            high_confidence_threshold=current.high_confidence_threshold,
+            control_modes=dict(current.control_modes),
+            control_enabled=dict(current.control_enabled),
+            parameters={cid: dict(params) for cid, params in current.parameters.items()},
+            simulate_opa_failure_once=True,
+        )
+        self._update_settings(updated)
+        return updated
+
+    def consume_opa_failure_simulation(self) -> bool:
+        """Return and reset the one-shot OPA failure simulation flag."""
+
+        current = self.read_settings()
+        if not current.simulate_opa_failure_once:
+            return False
+        updated = RuntimeSettings(
+            high_confidence_threshold=current.high_confidence_threshold,
+            control_modes=dict(current.control_modes),
+            control_enabled=dict(current.control_enabled),
+            parameters={cid: dict(params) for cid, params in current.parameters.items()},
+            simulate_opa_failure_once=False,
+        )
+        self._update_settings(updated)
+        return True
 
     def row_count(self) -> int:
         """Return the number of settings rows for reviewer/test visibility."""
@@ -212,6 +249,7 @@ class SettingsStore:
                 )
                 self._add_column_if_missing_sqlite(connection, "control_enabled", "TEXT")
                 self._add_column_if_missing_sqlite(connection, "parameters", "TEXT")
+                self._add_column_if_missing_sqlite(connection, "simulate_opa_failure_once", "INTEGER")
             return
 
         with self._postgres_connection() as connection:
@@ -228,6 +266,7 @@ class SettingsStore:
                 )
                 cursor.execute("ALTER TABLE runtime_settings ADD COLUMN IF NOT EXISTS control_enabled jsonb")
                 cursor.execute("ALTER TABLE runtime_settings ADD COLUMN IF NOT EXISTS parameters jsonb")
+                cursor.execute("ALTER TABLE runtime_settings ADD COLUMN IF NOT EXISTS simulate_opa_failure_once boolean NOT NULL DEFAULT false")
 
     _ALLOWED_COLUMN_TYPES = {"TEXT", "REAL", "INTEGER", "BLOB", "NUMERIC"}
     _IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -250,7 +289,7 @@ class SettingsStore:
         if self._uses_sqlite:
             with self._sqlite_connection() as connection:
                 row = connection.execute(
-                    "SELECT high_confidence_threshold, control_modes, control_enabled, parameters FROM runtime_settings WHERE id = ?",
+                    "SELECT high_confidence_threshold, control_modes, control_enabled, parameters, simulate_opa_failure_once FROM runtime_settings WHERE id = ?",
                     (SETTINGS_ROW_ID,),
                 ).fetchone()
                 if row is None:
@@ -260,12 +299,13 @@ class SettingsStore:
                     control_modes=json.loads(row[1]),
                     control_enabled=json.loads(row[2]) if row[2] else dict(DEFAULT_CONTROL_ENABLED),
                     parameters=json.loads(row[3]) if row[3] else dict(DEFAULT_CONTROL_PARAMETERS),
+                    simulate_opa_failure_once=bool(row[4]),
                 )
 
         with self._postgres_connection() as connection:
             with connection.cursor() as cursor:
                 cursor.execute(
-                    "SELECT high_confidence_threshold, control_modes, control_enabled, parameters FROM runtime_settings WHERE id = %s",
+                    "SELECT high_confidence_threshold, control_modes, control_enabled, parameters, simulate_opa_failure_once FROM runtime_settings WHERE id = %s",
                     (SETTINGS_ROW_ID,),
                 )
                 row = cursor.fetchone()
@@ -276,19 +316,21 @@ class SettingsStore:
                     control_modes=row[1],
                     control_enabled=row[2] if row[2] else dict(DEFAULT_CONTROL_ENABLED),
                     parameters=row[3] if row[3] else dict(DEFAULT_CONTROL_PARAMETERS),
+                    simulate_opa_failure_once=bool(row[4]),
                 )
 
     def _insert_settings(self, settings: RuntimeSettings) -> None:
         if self._uses_sqlite:
             with self._sqlite_connection() as connection:
                 connection.execute(
-                    "INSERT INTO runtime_settings (id, high_confidence_threshold, control_modes, control_enabled, parameters) VALUES (?, ?, ?, ?, ?)",
+                    "INSERT INTO runtime_settings (id, high_confidence_threshold, control_modes, control_enabled, parameters, simulate_opa_failure_once) VALUES (?, ?, ?, ?, ?, ?)",
                     (
                         SETTINGS_ROW_ID,
                         settings.high_confidence_threshold,
                         json.dumps(settings.control_modes, sort_keys=True),
                         json.dumps(settings.control_enabled, sort_keys=True),
                         json.dumps(settings.parameters, sort_keys=True),
+                        int(settings.simulate_opa_failure_once),
                     ),
                 )
             return
@@ -296,13 +338,14 @@ class SettingsStore:
         with self._postgres_connection() as connection:
             with connection.cursor() as cursor:
                 cursor.execute(
-                    "INSERT INTO runtime_settings (id, high_confidence_threshold, control_modes, control_enabled, parameters) VALUES (%s, %s, %s, %s, %s)",
+                    "INSERT INTO runtime_settings (id, high_confidence_threshold, control_modes, control_enabled, parameters, simulate_opa_failure_once) VALUES (%s, %s, %s, %s, %s, %s)",
                     (
                         SETTINGS_ROW_ID,
                         settings.high_confidence_threshold,
                         Jsonb(settings.control_modes),
                         Jsonb(settings.control_enabled),
                         Jsonb(settings.parameters),
+                        settings.simulate_opa_failure_once,
                     ),
                 )
 
@@ -312,7 +355,7 @@ class SettingsStore:
                 connection.execute(
                     """
                     UPDATE runtime_settings
-                    SET high_confidence_threshold = ?, control_modes = ?, control_enabled = ?, parameters = ?, updated_at = CURRENT_TIMESTAMP
+                    SET high_confidence_threshold = ?, control_modes = ?, control_enabled = ?, parameters = ?, simulate_opa_failure_once = ?, updated_at = CURRENT_TIMESTAMP
                     WHERE id = ?
                     """,
                     (
@@ -320,6 +363,7 @@ class SettingsStore:
                         json.dumps(settings.control_modes, sort_keys=True),
                         json.dumps(settings.control_enabled, sort_keys=True),
                         json.dumps(settings.parameters, sort_keys=True),
+                        int(settings.simulate_opa_failure_once),
                         SETTINGS_ROW_ID,
                     ),
                 )
@@ -330,7 +374,7 @@ class SettingsStore:
                 cursor.execute(
                     """
                     UPDATE runtime_settings
-                    SET high_confidence_threshold = %s, control_modes = %s, control_enabled = %s, parameters = %s, updated_at = now()
+                    SET high_confidence_threshold = %s, control_modes = %s, control_enabled = %s, parameters = %s, simulate_opa_failure_once = %s, updated_at = now()
                     WHERE id = %s
                     """,
                     (
@@ -338,6 +382,7 @@ class SettingsStore:
                         Jsonb(settings.control_modes),
                         Jsonb(settings.control_enabled),
                         Jsonb(settings.parameters),
+                        settings.simulate_opa_failure_once,
                         SETTINGS_ROW_ID,
                     ),
                 )

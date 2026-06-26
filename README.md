@@ -71,7 +71,7 @@ Presidio and the nuance stub only ever produce bounded **evidence** — entities
 
 | # | Action | Decision | Control / role |
 |---|---|---|---|
-| 1 | Payment £80, clean customer | `allow` | none |
+| 1 | Payment £80, clean customer | `allow` | no triggered control |
 | 2 | Payment £850, no approval | `escalate` → `finance_supervisor` | FIN-PAY-002 |
 | 3 | Payment £200, fraud-flagged customer | `block` | FIN-PAY-001 |
 | 4 | External email with NHS number + health condition, no disclosure basis | `escalate` → `data_protection_approver` (stub confidence 0.88) | COMM-EMAIL-001 |
@@ -89,3 +89,13 @@ The `high_confidence_threshold` setting defaults to **0.75** and directly govern
 Every proposed action and decision is written to the audit store as an append-only, SHA-256 hash-chained record, whether the run is shadow, soft, or full enforcement. On the audit log page, **"Verify chain"** recomputes the hash chain and reports it intact (with the count of records verified). **"Simulate tampering"** deliberately alters a stored row in place; re-running "Verify chain" afterwards makes the break unmistakable and names the exact broken record — proving the chain detects any after-the-fact alteration.
 
 Approvals are append-only too: approving or rejecting an escalation never edits the original record. It appends a new, linked `approval_decision` record carrying the approver, the required reason, and the resulting execution state.
+
+## Enforcement modes, shadow mode, and fail closed
+
+Shadow mode is intentionally honest: the action executes because enforcement is shadow, while the decision view and audit record still show the full-enforcement result that would have applied, for example "Executed (shadow) — would have blocked — FIN-PAY-001". Soft and full modes let the same OPA/Rego decisions move from observation into enforcement without changing the scenario logic.
+
+The demo also includes a visibly labelled one-shot policy-engine failure simulation. It sets a temporary flag that makes the next policy decision return `fail_closed` with policy-engine-unreachable messaging and enhanced logging, then auto-resets so the following event returns to the normal OPA path. In production, fail-closed is not a gimmick: when OPA is unreachable, required context fails, or sensors fail, Python may only return `fail_closed` rather than silently allowing the action.
+
+## Demo script
+
+Use [`DEMO_SCRIPT.md`](DEMO_SCRIPT.md) for a 12–15 minute narrated walkthrough in this exact order: dashboard calm, routine live feed, enforcement live feed, human oversight, semantic evidence, shadow mode, policy control, confidence threshold, audit integrity, and fail closed.

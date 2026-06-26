@@ -326,6 +326,8 @@ class PolicyPipeline:
             return _fail_closed_decision(threshold, "Context resolution failed")
         if evidence.sensor_error:
             return _fail_closed_decision(threshold, "Semantic sensor failed")
+        if self.settings_store.consume_opa_failure_simulation():
+            return _fail_closed_decision(threshold, "Policy engine unreachable (one-shot demo simulation)")
         return opa_client.decide(action, context, evidence, config, opa_url=self.opa_url)
 
 

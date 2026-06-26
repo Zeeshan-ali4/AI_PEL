@@ -23,6 +23,8 @@
 <div class="banner banner-success">Control status saved. It takes effect on the next evaluation — no restart needed.</div>
 {% elif saved == "parameter" %}
 <div class="banner banner-success">Control parameter saved. It takes effect on the next evaluation — no restart needed.</div>
+{% elif saved == "opa_failure" %}
+<div class="banner banner-warning">Demo-only one-shot policy engine failure armed. The next policy decision will fail closed, then the flag auto-resets.</div>
 {% elif error %}
 <div class="banner banner-error">{{ error }}</div>
 {% endif %}
@@ -172,5 +174,20 @@
       </table>
     </div>
   </div>
+</section>
+
+<section id="fail-closed-demo" class="card">
+  <h2>Fail-closed demo control</h2>
+  <p>
+    This is a visibly labelled demo-only simulation. It does not disable OPA globally;
+    it arms a one-shot flag so the next policy decision returns
+    <code>fail_closed</code> with policy-engine-unreachable messaging and enhanced
+    logging, then automatically resets for the following event.
+  </p>
+  <p class="card-note">Current one-shot status: <strong>{{ "armed" if opa_failure_armed else "not armed" }}</strong></p>
+  {# nosemgrep: python.django.security.django-no-csrf-token.django-no-csrf-token -- FastAPI app, not Django; no session/cookie auth backs this unauthenticated demo endpoint, so a CSRF token would have nothing to validate against #}
+  <form method="post" action="/settings/simulate-opa-failure" style="margin-top: 0.875rem;">
+    <button type="submit" class="btn btn-primary">Trigger one-shot policy engine failure</button>
+  </form>
 </section>
 {% endblock %}

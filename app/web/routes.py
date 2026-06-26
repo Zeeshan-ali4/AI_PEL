@@ -16,6 +16,8 @@ from fastapi import APIRouter, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
+from app.audit.models import GENESIS_PREV_HASH
+from app.audit.store import _hash_payload
 from app.context import resolver as context_resolver
 from app.normaliser.normaliser import normalise
 from app.pipeline import PipelineResult, UnknownScenarioError, get_pipeline
@@ -786,6 +788,7 @@ def _record_view_context(record: EvidenceRecord, records: list[EvidenceRecord]) 
         "control_id": decision.control_id,
         "framework_mappings": decision.framework_mappings,
         "referenced": referenced,
+        "package_export_url": f"/audit/export.json?correlation_id={record.correlation_id}",
     }
 
 
@@ -823,21 +826,51 @@ def record_export_html(request: Request, record_hash: str) -> HTMLResponse:
 
 
 def _build_audit_rows(records: list[EvidenceRecord]) -> list[dict[str, Any]]:
-    """Chronological, assurance-readable rows for the T18 audit log (spec §8A item 6)."""
+    """Chronological, assurance-readable rows for the T18/T25 audit log."""
 
-    return [
-        {
-            "id": record.id,
-            "created_at": record.created_at,
-            "record_type": record.record_type.value,
-            "correlation_id": str(record.correlation_id),
-            "decision": record.decision.decision.value,
+    rows = []
+    expected_prev_hash = GENESIS_PREV_HASH
+    previous_record_id: int | None = None
+    for record in records:
+        row_for_hash = {
+            "correlation_id": record.correlation_id,
+            "action": record.action,
+            "context_used": record.context_used,
+            "evidence": record.evidence,
+            "decision": record.decision,
+            "enforcement_mode": str(record.enforcement_mode),
             "executed": record.executed,
-            "record_hash": record.record_hash,
+            "record_type": str(record.record_type),
+            "references_hash": record.references_hash,
+            "human_approver": record.human_approver,
+            "approval_reason": record.approval_reason,
+            "created_at": record.created_at,
             "prev_hash": record.prev_hash,
         }
-        for record in records
-    ]
+        recomputed_record_hash = _hash_payload(row_for_hash, record.prev_hash)
+        link_intact = record.prev_hash == expected_prev_hash
+        hash_intact = recomputed_record_hash == record.record_hash
+        rows.append(
+            {
+                "id": record.id,
+                "created_at": record.created_at,
+                "record_type": record.record_type.value,
+                "correlation_id": str(record.correlation_id),
+                "decision": record.decision.decision.value,
+                "executed": record.executed,
+                "record_hash": record.record_hash,
+                "prev_hash": record.prev_hash,
+                "expected_prev_hash": expected_prev_hash,
+                "recomputed_record_hash": recomputed_record_hash,
+                "previous_record_id": previous_record_id,
+                "link_intact": link_intact,
+                "hash_intact": hash_intact,
+                "chain_status": "intact" if link_intact and hash_intact else "broken",
+            }
+        )
+        expected_prev_hash = record.record_hash
+        previous_record_id = record.id
+    return rows
 
 
 @router.get("/audit", response_class=HTMLResponse)
@@ -865,6 +898,18 @@ def audit_log_page(
             "broken_reason": broken_reason,
             "tampered": tampered,
         },
+    )
+
+
+@router.get("/audit/export.json")
+def audit_package_export(correlation_id: str | None = None) -> JSONResponse:
+    """Download a demo-grade tamper-evident audit package for all or one correlation id."""
+
+    package = get_pipeline().audit_store.export_audit_package(correlation_id=correlation_id)
+    suffix = f"-{correlation_id}" if correlation_id else "-all-records"
+    return JSONResponse(
+        content=package,
+        headers={"Content-Disposition": f'attachment; filename="audit-package{suffix}.json"'},
     )
 
 

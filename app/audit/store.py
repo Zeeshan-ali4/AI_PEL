@@ -209,6 +209,100 @@ class AuditStore:
 
         return ChainVerificationResult(intact=True, verified_count=len(raw_rows), broken_record_id=None)
 
+
+    def export_audit_package(self, *, correlation_id: str | UUID | None = None) -> dict[str, Any]:
+        """Build a deterministic, demo-grade audit package for external review.
+
+        The package is a self-contained SHA-256 integrity check, not a digital
+        signature. It exports existing append-only rows only; it never mutates
+        audit state. ``package_integrity_hash`` is computed over the canonical
+        package payload excluding that hash so repeated exports of unchanged
+        selected records are stable, while any record or chain change produces a
+        different package hash.
+        """
+
+        self._ensure_table()
+        selected_correlation_id = str(correlation_id) if correlation_id is not None else None
+        all_records = self.read_records()
+        records = [
+            record
+            for record in all_records
+            if selected_correlation_id is None or str(record.correlation_id) == selected_correlation_id
+        ]
+
+        previous_global_hash_by_id: dict[int, str] = {}
+        previous_global_id_by_id: dict[int, int | None] = {}
+        expected_prev_hash = GENESIS_PREV_HASH
+        previous_global_id: int | None = None
+        for record in all_records:
+            previous_global_hash_by_id[record.id] = expected_prev_hash
+            previous_global_id_by_id[record.id] = previous_global_id
+            expected_prev_hash = record.record_hash
+            previous_global_id = record.id
+
+        selected_ids = {record.id for record in records}
+        chain_links: list[dict[str, Any]] = []
+        previous_selected_id: int | None = None
+        previous_selected_hash: str | None = None
+        for record in records:
+            expected_global_prev_hash = previous_global_hash_by_id.get(record.id, GENESIS_PREV_HASH)
+            previous_global_record_id = previous_global_id_by_id.get(record.id)
+            selected_predecessor_is_adjacent = previous_global_record_id in selected_ids or previous_global_record_id is None
+            chain_links.append(
+                {
+                    "record_id": record.id,
+                    "record_hash": record.record_hash,
+                    "prev_hash": record.prev_hash,
+                    "expected_prev_hash": expected_global_prev_hash,
+                    "link_intact": record.prev_hash == expected_global_prev_hash,
+                    "link_intact_scope": "global_predecessor",
+                    "previous_global_record_id": previous_global_record_id,
+                    "previous_global_record_hash": None if previous_global_record_id is None else expected_global_prev_hash,
+                    "previous_selected_record_id": previous_selected_id,
+                    "previous_selected_record_hash": previous_selected_hash,
+                    "selected_predecessor_is_adjacent": selected_predecessor_is_adjacent,
+                    "boundary_context": (
+                        "starts_at_genesis"
+                        if previous_global_record_id is None
+                        else "previous_global_record_in_package"
+                        if previous_global_record_id in selected_ids
+                        else "previous_global_record_omitted_from_selection"
+                    ),
+                }
+            )
+            previous_selected_id = record.id
+            previous_selected_hash = record.record_hash
+
+        package_without_hash: dict[str, Any] = {
+            "header": {
+                "title": "AI PEL audit package",
+                "integrity_model": (
+                    "Demo integrity check: each audit record stores its own SHA-256 record_hash "
+                    "and the prev_hash of the preceding record, forming a tamper-evident chain. "
+                    "The package_integrity_hash covers this exported bundle so reviewers can see "
+                    "whether the package content changes."
+                ),
+                "demo_attestation_notice": (
+                    "This is a demo integrity check, not production-grade signing. "
+                    "A production deployment would use signed attestation and managed key controls."
+                ),
+                "how_to_verify": (
+                    "Check that each chain_links item has link_intact=true, then recompute the "
+                    "package_integrity_hash over the package content excluding package_integrity_hash."
+                ),
+            },
+            "selection": {
+                "correlation_id": selected_correlation_id,
+                "record_count": len(records),
+            },
+            "chain_links": chain_links,
+            "records": [record.model_dump(mode="json") for record in records],
+        }
+        return {
+            **package_without_hash,
+            "package_integrity_hash": sha256(canonical_json(package_without_hash).encode("utf-8")).hexdigest(),
+        }
+
     def simulate_tampering(self, record_id: int, *, executed: bool | None = None) -> None:
         """Demo-only: mutate a stored row in place to demonstrate chain breakage.
 

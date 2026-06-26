@@ -329,7 +329,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Estimate:** 1–1.5 days. The Rego changes are small. The settings store extension is moderate. The UI is a section addition to an existing page.
 
 ## T24 — Escalation dashboard polish (extends T16)
-- **Status:** REVIEW (reviewer sign-off recorded in `briefs/T24_reviewer_brief.md`; trace-link gap from initial review resolved in commit d1a6f95; awaiting QA + human Verify before DONE)
+- **Status:** REVIEW (reviewer sign-off recorded in `briefs/T24_reviewer_brief.md`; trace-link gap from initial review resolved in commit d1a6f95; QA PASS recorded in `briefs/T24_qa_brief.md`; awaiting human Verify before DONE)
 - **Goal:** Enhance the approval queue to feel like an operational dashboard rather than a basic list. Add a pending-count badge in the nav bar (visible from any page), timestamps and triggering scenario context on each queue item, a role filter ("show only items for `finance_supervisor`"), and a link from each queue item to the pipeline trace that caused the escalation (linking to T22's trace view for the focal event).
 - **Depends on:** T16, T22 (for trace linkage)
 - **Spec refs:** §8A item 4 (extended)

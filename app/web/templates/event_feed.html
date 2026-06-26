@@ -117,7 +117,41 @@
   {% endfor %}
 </div>
 
-{% if scenario_id %}
+{% if stored_trace %}
+<section class="card" style="margin-top: 1.75rem;" id="stored-trace-section" data-correlation-id="{{ stored_trace.correlation_id }}">
+  <h2>Scenario {{ stored_trace.scenario_number }}: {{ stored_trace.scenario_title }} — trace for this escalation</h2>
+  <p class="card-note">
+    This is the exact pipeline evaluation (correlation ID <code>{{ stored_trace.correlation_id }}</code>) that
+    produced this escalation — not a fresh re-run of the scenario.
+  </p>
+  <div class="event-row event-row-focal {{ stored_trace.decision_css }}">
+    <div class="event-row-focal-summary" style="cursor: default;">
+      <span class="event-row-index">Focal</span>
+      <span>
+        <strong>{{ stored_trace.action_summary }}</strong><br>
+        Control: {{ stored_trace.control_id or "None" }} &mdash; {{ stored_trace.reason }}
+      </span>
+      <span class="event-badge {{ stored_trace.decision_css }}">{{ stored_trace.decision_label }}</span>
+    </div>
+    <div class="trace-timeline">
+      <p class="card-note">
+        Record hash: <code>{{ stored_trace.record_hash }}</code> &mdash;
+        <a href="/records/{{ stored_trace.record_hash }}">view full evidence record</a>
+      </p>
+      {% for stage in stored_trace.trace %}
+      <div class="trace-stage-card">
+        <div class="trace-stage-header">
+          <strong>{{ stage.stage_name }}</strong>
+          <span>{{ stage.duration_ms }} ms</span>
+        </div>
+        <pre>{{ stage.inputs_summary | tojson(indent=2) }}</pre>
+        <pre>{{ stage.outputs_summary | tojson(indent=2) }}</pre>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% elif scenario_id %}
 <section class="card" style="margin-top: 1.75rem;" id="event-feed-section" data-scenario-id="{{ scenario_id }}" data-stream-url="/run/{{ scenario_id }}/stream">
   <h2>Scenario {{ scenario_id }}: {{ scenario_title }} — live run</h2>
   <p class="card-note">

@@ -36,6 +36,11 @@ router = APIRouter()
 _TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 
+# T24: a global so the nav badge (rendered from base.html on every page) can
+# show a live, persisted pending-escalation count without every route having
+# to thread it through its own context.
+templates.env.globals["pending_escalation_count"] = lambda: _pending_escalation_count()
+
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 CONTROLS_PATH = Path(__file__).resolve().parents[2] / "opa" / "data" / "controls.json"
@@ -63,9 +68,25 @@ AGENT_STEPS_PER_RUN = 14
 # T15 only needs the escalation routing to point somewhere stable.
 APPROVAL_QUEUE_PATH = "/approvals"
 
+# Shared template for the T22 live event feed and stored trace page.
+EVENT_FEED_TEMPLATE = "event_feed.html"
+
 # Stable demo default used when an approver identity is not supplied on the
 # approval form (spec §8A item 4 only requires the identity be populated).
 DEFAULT_HUMAN_APPROVER = "demo.named.approver@internal.example"
+
+# T24: maps a control's expected-outcome scenario number, used only to link a
+# pending escalation to the existing T22 live-feed/trace route for the
+# scenario that produced it. Built from the canonical scenario catalog so it
+# can never drift from §7 — this does not invent a second tracing system.
+_CONTROL_TO_SCENARIO_NUMBER = {
+    scenario["expected_control_id"]: scenario["number"]
+    for scenario in get_scenarios()
+    if scenario.get("expected_control_id")
+}
+
+# T24 role filter options surfaced on the approvals page; "All" clears the filter.
+APPROVAL_ROLE_FILTER_OPTIONS = ("All", "finance_supervisor", "data_protection_approver", "vulnerable_customer_team")
 
 # Plain-English, board-readable summaries for the scenario runner cards (spec §8A item 2).
 # These do not alter scenario data or expected outcomes (scenarios/scenarios.py remains
@@ -256,26 +277,89 @@ def event_feed_index(request: Request) -> HTMLResponse:
 
     return templates.TemplateResponse(
         request,
-        "event_feed.html",
+        EVENT_FEED_TEMPLATE,
         {"cards": _event_feed_cards(), "scenario_id": None, "scenario_title": None},
     )
 
 
+def _stored_trace_view(correlation_id: str, scenario_id: int) -> dict[str, Any] | None:
+    """Resolve `correlation_id` against the real stored evaluation + its trace.
+
+    Returns `None` if either half is missing so the caller fails loudly (404)
+    rather than silently falling back to a fresh re-run — a link built from a
+    correlation_id that no longer resolves to its original evaluation is the
+    exact failure mode this lookup exists to prevent.
+    """
+
+    pipeline = get_pipeline()
+    trace = pipeline.get_trace(correlation_id)
+    if trace is None:
+        return None
+    records = pipeline.audit_store.read_records()
+    record = _find_action_evaluation_record(records, correlation_id)
+    if record is None:
+        return None
+
+    decision = record.decision
+    display = DECISION_DISPLAY.get(decision.decision.value, {"label": decision.decision.value, "css": ""})
+    return {
+        "correlation_id": correlation_id,
+        "scenario_number": scenario_id,
+        "scenario_title": _scenario_title(scenario_id),
+        "action_summary": _action_summary(record.action),
+        "decision_label": display["label"],
+        "decision_css": display["css"],
+        "control_id": decision.control_id,
+        "reason": decision.reason,
+        "framework_mappings": decision.framework_mappings,
+        "record_hash": record.record_hash,
+        "trace": trace.to_json(),
+    }
+
+
 @router.get("/events/{scenario_id}", response_class=HTMLResponse)
-def event_feed_for_scenario(request: Request, scenario_id: int) -> HTMLResponse:
-    """Render the live feed UI pre-armed to stream one scenario's background traffic + focal event."""
+def event_feed_for_scenario(request: Request, scenario_id: int, correlation_id: str | None = None) -> HTMLResponse:
+    """Render the T22 trace view for one scenario.
+
+    With no `correlation_id`, this pre-arms the live feed UI to stream a fresh
+    run of the scenario (the original T22 demo behaviour). With a
+    `correlation_id` (how T24 escalation "View trace" links route here), it
+    instead renders the stored trace for that exact evaluation — the human
+    decision must trace back to the specific pipeline run that caused the
+    escalation, not just to a same-numbered scenario re-run.
+    """
 
     try:
         get_raw_tool_call(scenario_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    if correlation_id is not None:
+        stored_trace = _stored_trace_view(correlation_id, scenario_id)
+        if stored_trace is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No stored evaluation found for correlation_id {correlation_id!r}.",
+            )
+        return templates.TemplateResponse(
+            request,
+            EVENT_FEED_TEMPLATE,
+            {
+                "cards": _event_feed_cards(),
+                "scenario_id": None,
+                "scenario_title": None,
+                "stored_trace": stored_trace,
+            },
+        )
+
     return templates.TemplateResponse(
         request,
-        "event_feed.html",
+        EVENT_FEED_TEMPLATE,
         {
             "cards": _event_feed_cards(),
             "scenario_id": scenario_id,
             "scenario_title": _scenario_title(scenario_id),
+            "stored_trace": None,
         },
     )
 
@@ -485,9 +569,52 @@ def _action_summary(action: Action) -> str:
     return f"Email to {action.recipient or 'an external recipient'} regarding customer {action.resource.id}"
 
 
-def _build_pending_rows(pipeline, records: list[EvidenceRecord]) -> list[dict[str, Any]]:
+def _pending_escalation_count() -> int:
+    """Count un-actioned escalations from persisted audit state (spec T24).
+
+    Derived from the audit store on every call rather than an in-memory
+    counter: an `action_evaluation` record decided `escalate` counts as
+    pending unless a linked `approval_decision` record already references it.
+    """
+
+    pipeline = get_pipeline()
+    records = pipeline.audit_store.read_records()
+    actioned_refs = {
+        record.references_hash for record in records if record.record_type == RecordType.APPROVAL_DECISION
+    }
+    return sum(
+        1
+        for record in records
+        if record.record_type == RecordType.ACTION_EVALUATION
+        and record.decision.decision == DecisionValue.ESCALATE
+        and record.record_hash not in actioned_refs
+    )
+
+
+def _trace_link_for_control(control_id: str | None, correlation_id: str | None) -> str | None:
+    """Link a pending escalation to the exact pipeline evaluation that produced
+    it, via the existing T22 live-feed route (no separate tracing architecture).
+
+    `correlation_id` is the load-bearing part of this link: `/events/{scenario_id}`
+    resolves it against `PolicyPipeline.trace_store` and renders that specific
+    stored trace rather than re-running the scenario. Without a correlation_id
+    there is nothing to link to a specific evaluation, so no link is built."""
+
+    if correlation_id is None:
+        return None
+    scenario_number = _CONTROL_TO_SCENARIO_NUMBER.get(control_id)
+    if scenario_number is None:
+        return None
+    return f"/events/{scenario_number}?correlation_id={correlation_id}"
+
+
+def _build_pending_rows(
+    pipeline, records: list[EvidenceRecord], role_filter: str | None
+) -> list[dict[str, Any]]:
     rows = []
     for item in pipeline.approval_queue.list_pending():
+        if role_filter and role_filter != "All" and item.required_approval_role != role_filter:
+            continue
         original = _find_action_evaluation_record(records, item.correlation_id)
         rows.append(
             {
@@ -497,6 +624,8 @@ def _build_pending_rows(pipeline, records: list[EvidenceRecord]) -> list[dict[st
                 "reason": item.reason,
                 "summary": _action_summary(original.action) if original else "Action details unavailable.",
                 "original_record_hash": original.record_hash if original else None,
+                "created_at": original.created_at if original else item.created_at,
+                "trace_link": _trace_link_for_control(item.control_id, item.correlation_id),
             }
         )
     return rows
@@ -527,19 +656,27 @@ def _build_actioned_rows(records: list[EvidenceRecord]) -> list[dict[str, Any]]:
 
 
 @router.get("/approvals", response_class=HTMLResponse)
-def approvals_page(request: Request, actioned_item: str | None = None, error: str | None = None) -> HTMLResponse:
+def approvals_page(
+    request: Request,
+    actioned_item: str | None = None,
+    error: str | None = None,
+    role: str | None = None,
+) -> HTMLResponse:
     """Render the human approval queue: pending escalations plus the actioned trail (spec §8A item 4)."""
 
     pipeline = get_pipeline()
     records = pipeline.audit_store.read_records()
+    selected_role = role if role in APPROVAL_ROLE_FILTER_OPTIONS else "All"
     return templates.TemplateResponse(
         request,
         "approvals.html",
         {
-            "pending_rows": _build_pending_rows(pipeline, records),
+            "pending_rows": _build_pending_rows(pipeline, records, selected_role),
             "actioned_rows": _build_actioned_rows(records),
             "actioned_item": actioned_item,
             "error": error,
+            "role_options": APPROVAL_ROLE_FILTER_OPTIONS,
+            "selected_role": selected_role,
         },
     )
 

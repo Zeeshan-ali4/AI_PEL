@@ -298,7 +298,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Estimate:** 2–3 days. SSE plumbing is ~30 lines. Background event pool is the main work — each template needs valid fixture data that passes through the real pipeline.
 
 ## T23 — Policy rule editor (extends T19)
-- **Status:** Review (QA passed — see briefs/T23_qa_brief.md; awaiting human DONE gate)
+- **Status:** Done
 - **Goal:** Extend the settings page with a control-level configuration panel. Each control from `controls.json` can be toggled enabled/disabled. Key parameters — specifically the refund escalation threshold (currently £500, FIN-PAY-002) — are editable via the UI. Changes persist and take effect on the next pipeline run with no restart. The buyer sees "risk owns the policy, not engineering" — they can disable a control or change a threshold and immediately observe the decision change.
 - **Depends on:** T19, T10
 - **Spec refs:** §6, §8A item 7 (extended)
@@ -329,7 +329,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Estimate:** 1–1.5 days. The Rego changes are small. The settings store extension is moderate. The UI is a section addition to an existing page.
 
 ## T24 — Escalation dashboard polish (extends T16)
-- **Status:** To do
+- **Status:** Done
 - **Goal:** Enhance the approval queue to feel like an operational dashboard rather than a basic list. Add a pending-count badge in the nav bar (visible from any page), timestamps and triggering scenario context on each queue item, a role filter ("show only items for `finance_supervisor`"), and a link from each queue item to the pipeline trace that caused the escalation (linking to T22's trace view for the focal event).
 - **Depends on:** T16, T22 (for trace linkage)
 - **Spec refs:** §8A item 4 (extended)

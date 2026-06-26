@@ -8,6 +8,7 @@ policy decisions, evaluate scenarios, or encode allow/block/escalate logic.
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from dataclasses import dataclass
 from typing import Any, Literal
@@ -228,8 +229,15 @@ class SettingsStore:
                 cursor.execute("ALTER TABLE runtime_settings ADD COLUMN IF NOT EXISTS control_enabled jsonb")
                 cursor.execute("ALTER TABLE runtime_settings ADD COLUMN IF NOT EXISTS parameters jsonb")
 
-    @staticmethod
-    def _add_column_if_missing_sqlite(connection: sqlite3.Connection, column: str, column_type: str) -> None:
+    _ALLOWED_COLUMN_TYPES = {"TEXT", "REAL", "INTEGER", "BLOB", "NUMERIC"}
+    _IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+    @classmethod
+    def _add_column_if_missing_sqlite(cls, connection: sqlite3.Connection, column: str, column_type: str) -> None:
+        if not cls._IDENTIFIER_RE.match(column):
+            raise ValueError(f"Invalid column name: {column!r}")
+        if column_type not in cls._ALLOWED_COLUMN_TYPES:
+            raise ValueError(f"Invalid column type: {column_type!r}")
         existing = {row[1] for row in connection.execute("PRAGMA table_info(runtime_settings)").fetchall()}
         if column not in existing:
             connection.execute(f"ALTER TABLE runtime_settings ADD COLUMN {column} {column_type}")

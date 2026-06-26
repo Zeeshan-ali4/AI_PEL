@@ -77,7 +77,42 @@ def test_view_trace_link_points_to_event_feed_for_triggering_scenario(wired_pipe
 
     response = client.get("/approvals")
     assert response.status_code == 200
-    assert 'href="/events/2"' in response.text
+
+    original = _action_evaluation_records(wired_pipeline.audit_store)[0]
+    correlation_id = str(original.correlation_id)
+    expected_href = f"/events/2?correlation_id={correlation_id}"
+    assert f'href="{expected_href}"' in response.text
+
+
+def test_view_trace_link_resolves_to_the_exact_triggering_evaluation_not_a_rerun(wired_pipeline):
+    """The link must be traceable to the specific evaluation, not merely to a
+    same-numbered scenario. Run scenario 2 twice (two distinct correlation_ids,
+    two distinct audit rows) and confirm each escalation's trace link resolves
+    to *its own* record_hash/correlation_id, not to whichever run happens to
+    execute when the link is clicked."""
+
+    client = TestClient(app)
+    _run_scenario(client, 2)
+    _run_scenario(client, 2)
+
+    records = _action_evaluation_records(wired_pipeline.audit_store)
+    assert len(records) == 2
+    first, second = records
+    assert first.correlation_id != second.correlation_id
+    assert first.record_hash != second.record_hash
+
+    for record in (first, second):
+        trace_response = client.get(f"/events/2?correlation_id={record.correlation_id}")
+        assert trace_response.status_code == 200
+        assert str(record.correlation_id) in trace_response.text
+        assert record.record_hash in trace_response.text
+        # Not a re-run: the page must not offer to start a fresh live stream.
+        assert "Connecting to the live feed" not in trace_response.text
+
+    # A correlation_id that does not correspond to a stored evaluation must
+    # fail loudly rather than silently falling back to a scenario re-run.
+    missing = client.get("/events/2?correlation_id=00000000-0000-0000-0000-000000000000")
+    assert missing.status_code == 404
 
 
 def test_badge_count_decrements_after_approval(wired_pipeline):

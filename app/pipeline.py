@@ -141,6 +141,17 @@ class PolicyPipeline:
     approval_queue: ApprovalQueue = field(default_factory=ApprovalQueue)
     sdk_wrapper: SDKWrapper = field(default_factory=SDKWrapper)
     opa_url: str | None = None
+    # T24 trace linkage: every run's full stage-by-stage trace is kept here,
+    # keyed by `correlation_id`, so a human reviewing an escalation can open
+    # the *exact* evaluation that produced it rather than a fresh re-run of
+    # the same scenario number (spec: traceability from decision to the
+    # specific pipeline evaluation, not just the scenario it matches).
+    trace_store: dict[str, PipelineTrace] = field(default_factory=dict)
+
+    def get_trace(self, correlation_id: str) -> PipelineTrace | None:
+        """Look up the stored trace for one specific evaluation by correlation_id."""
+
+        return self.trace_store.get(correlation_id)
 
     def run_scenario(self, scenario_id: int, *, capture_trace: bool = False) -> PipelineResult:
         """Run one canonical scenario number through the full policy gate."""
@@ -153,9 +164,10 @@ class PolicyPipeline:
 
     def run_event(self, raw_tool_call: dict[str, Any], *, capture_trace: bool = False) -> PipelineResult:
         """Intercept a raw tool call (scenario or background event) and run it
-        through the full pipeline, optionally capturing a `PipelineTrace`."""
+        through the full pipeline, optionally exposing the resulting `PipelineTrace`
+        on the returned `PipelineResult` (it is always persisted in `trace_store`)."""
 
-        trace = PipelineTrace() if capture_trace else None
+        trace = PipelineTrace()
         recorder = _StageRecorder(trace)
         with recorder.stage(
             "intercept",
@@ -163,7 +175,9 @@ class PolicyPipeline:
         ) as outputs:
             intercepted_call = self.sdk_wrapper.call_tool(raw_tool_call)
             outputs["intercepted"] = True
-        return self.run_raw_tool_call(intercepted_call, capture_trace=trace, _recorder=recorder)
+        return self.run_raw_tool_call(
+            intercepted_call, capture_trace=capture_trace, _recorder=recorder, _trace=trace
+        )
 
     def run_raw_tool_call(
         self,
@@ -171,15 +185,21 @@ class PolicyPipeline:
         *,
         capture_trace: bool | PipelineTrace | None = False,
         _recorder: "_StageRecorder | None" = None,
+        _trace: "PipelineTrace | None" = None,
     ) -> PipelineResult:
         """Run one already-intercepted raw tool call through the pipeline.
 
-        `capture_trace` accepts a bare `bool` (back-compat default `False`) or
-        an existing `PipelineTrace` to append to (used internally by
-        `run_event`, which has already recorded the `intercept` stage).
+        The full trace is always recorded and persisted into `trace_store`
+        keyed by the action's `correlation_id` so it can be looked up later by
+        that ID alone. `capture_trace` only controls whether the trace is also
+        attached to the returned `PipelineResult` (a bare `bool`, back-compat
+        default `False`); `_trace`/`_recorder` are used internally by
+        `run_event`, which has already recorded the `intercept` stage.
         """
 
-        trace = capture_trace if isinstance(capture_trace, PipelineTrace) else (PipelineTrace() if capture_trace else None)
+        trace = _trace if _trace is not None else (
+            capture_trace if isinstance(capture_trace, PipelineTrace) else PipelineTrace()
+        )
         recorder = _recorder if _recorder is not None else _StageRecorder(trace)
 
         with recorder.stage("normalise", {"tool_name": raw_tool_call.get("tool_name")}) as outputs:
@@ -239,6 +259,8 @@ class PolicyPipeline:
             )
             outputs["record_hash"] = record.record_hash
             outputs["record_id"] = record.id
+
+        self.trace_store[str(action.correlation_id)] = trace
 
         return PipelineResult(record=record, enforcement_outcome=outcome, trace=trace)
 

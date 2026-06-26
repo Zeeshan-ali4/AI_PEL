@@ -279,14 +279,76 @@ def event_feed_index(request: Request) -> HTMLResponse:
     )
 
 
+def _stored_trace_view(correlation_id: str, scenario_id: int) -> dict[str, Any] | None:
+    """Resolve `correlation_id` against the real stored evaluation + its trace.
+
+    Returns `None` if either half is missing so the caller fails loudly (404)
+    rather than silently falling back to a fresh re-run — a link built from a
+    correlation_id that no longer resolves to its original evaluation is the
+    exact failure mode this lookup exists to prevent.
+    """
+
+    pipeline = get_pipeline()
+    trace = pipeline.get_trace(correlation_id)
+    if trace is None:
+        return None
+    records = pipeline.audit_store.read_records()
+    record = _find_action_evaluation_record(records, correlation_id)
+    if record is None:
+        return None
+
+    decision = record.decision
+    display = DECISION_DISPLAY.get(decision.decision.value, {"label": decision.decision.value, "css": ""})
+    return {
+        "correlation_id": correlation_id,
+        "scenario_number": scenario_id,
+        "scenario_title": _scenario_title(scenario_id),
+        "action_summary": _action_summary(record.action),
+        "decision_label": display["label"],
+        "decision_css": display["css"],
+        "control_id": decision.control_id,
+        "reason": decision.reason,
+        "framework_mappings": decision.framework_mappings,
+        "record_hash": record.record_hash,
+        "trace": trace.to_json(),
+    }
+
+
 @router.get("/events/{scenario_id}", response_class=HTMLResponse)
-def event_feed_for_scenario(request: Request, scenario_id: int) -> HTMLResponse:
-    """Render the live feed UI pre-armed to stream one scenario's background traffic + focal event."""
+def event_feed_for_scenario(request: Request, scenario_id: int, correlation_id: str | None = None) -> HTMLResponse:
+    """Render the T22 trace view for one scenario.
+
+    With no `correlation_id`, this pre-arms the live feed UI to stream a fresh
+    run of the scenario (the original T22 demo behaviour). With a
+    `correlation_id` (how T24 escalation "View trace" links route here), it
+    instead renders the stored trace for that exact evaluation — the human
+    decision must trace back to the specific pipeline run that caused the
+    escalation, not just to a same-numbered scenario re-run.
+    """
 
     try:
         get_raw_tool_call(scenario_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    if correlation_id is not None:
+        stored_trace = _stored_trace_view(correlation_id, scenario_id)
+        if stored_trace is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No stored evaluation found for correlation_id {correlation_id!r}.",
+            )
+        return templates.TemplateResponse(
+            request,
+            "event_feed.html",
+            {
+                "cards": _event_feed_cards(),
+                "scenario_id": None,
+                "scenario_title": None,
+                "stored_trace": stored_trace,
+            },
+        )
+
     return templates.TemplateResponse(
         request,
         "event_feed.html",
@@ -294,6 +356,7 @@ def event_feed_for_scenario(request: Request, scenario_id: int) -> HTMLResponse:
             "cards": _event_feed_cards(),
             "scenario_id": scenario_id,
             "scenario_title": _scenario_title(scenario_id),
+            "stored_trace": None,
         },
     )
 
@@ -526,21 +589,20 @@ def _pending_escalation_count() -> int:
 
 
 def _trace_link_for_control(control_id: str | None, correlation_id: str | None) -> str | None:
-    """Link a pending escalation to the existing T22 live-feed route for the
-    scenario whose control produced it (no separate tracing architecture).
+    """Link a pending escalation to the exact pipeline evaluation that produced
+    it, via the existing T22 live-feed route (no separate tracing architecture).
 
-    The correlation_id is carried as a query parameter so the trace view can
-    be extended later to resolve the actual stored evaluation; today the T22
-    route still replays the scenario rather than rendering the stored trace,
-    since EvidenceRecord does not persist PipelineTrace (out of T24 scope)."""
+    `correlation_id` is the load-bearing part of this link: `/events/{scenario_id}`
+    resolves it against `PolicyPipeline.trace_store` and renders that specific
+    stored trace rather than re-running the scenario. Without a correlation_id
+    there is nothing to link to a specific evaluation, so no link is built."""
 
+    if correlation_id is None:
+        return None
     scenario_number = _CONTROL_TO_SCENARIO_NUMBER.get(control_id)
     if scenario_number is None:
         return None
-    link = f"/events/{scenario_number}"
-    if correlation_id is not None:
-        link += f"?correlation_id={correlation_id}"
-    return link
+    return f"/events/{scenario_number}?correlation_id={correlation_id}"
 
 
 def _build_pending_rows(

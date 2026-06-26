@@ -54,6 +54,39 @@
   </article>
 </section>
 
+<section class="stat-grid" aria-label="Decision and action-type breakdown">
+  <article class="stat-card">
+    <span class="stat-label">Decision breakdown</span>
+    <strong class="stat-value">{{ gated_total }}</strong>
+    <span class="stat-note">
+      {{ decision_breakdown.allowed }} allowed /
+      {{ decision_breakdown.logged }} logged /
+      {{ decision_breakdown.escalated }} escalated /
+      {{ decision_breakdown.blocked }} blocked
+    </span>
+  </article>
+
+  <article class="stat-card stat-card-blue">
+    <span class="stat-label">Allowed or logged</span>
+    <strong class="stat-value">
+      {{ (((decision_breakdown.allowed + decision_breakdown.logged) / gated_total * 100) | round(0) | int) if gated_total else 0 }}%
+    </strong>
+    <span class="stat-note">routine actions proceeding with evidence</span>
+  </article>
+
+  <article class="stat-card stat-card-amber">
+    <span class="stat-label">Escalated</span>
+    <strong class="stat-value">{{ ((decision_breakdown.escalated / gated_total * 100) | round(0) | int) if gated_total else 0 }}%</strong>
+    <span class="stat-note">named human review</span>
+  </article>
+
+  <article class="stat-card">
+    <span class="stat-label">Action-type breakdown</span>
+    <strong class="stat-value">{{ action_type_breakdown.payment }} / {{ action_type_breakdown.email }}</strong>
+    <span class="stat-note">payment / email evaluations</span>
+  </article>
+</section>
+
 {% if totals.escalated > 0 %}
 <section class="review-alert" aria-label="Human review queue">
   <div class="review-icon" aria-hidden="true">
@@ -72,7 +105,7 @@
 
 <section id="enforcement-mode" class="panel mode-panel" aria-labelledby="mode-title">
   <div class="panel-heading">
-    <span class="section-label">Enforcement Mode</span>
+    <span class="section-label">Enforcement mode</span>
     <h2 id="mode-title">Risk-owned operating state</h2>
     <p>Sets every control below to the same mode. Risk owns this switch, not engineering.</p>
   </div>
@@ -117,7 +150,8 @@
     </p>
     <p>
       The gate logs proposed consequential actions and the binding decisions on them — this is the auditable surface.
-      Full-transcript logging would store many times more data with no added assurance of control.
+      Full-transcript logging would store many times more data with no added assurance of control; a
+      complete, unauditable agent transcript is not the assurance objective here.
     </p>
   </div>
 </section>
@@ -126,7 +160,7 @@
   <div class="controls-header">
     <div>
       <span class="section-label">Control Inventory</span>
-      <h2 id="controls-title">Governed policies currently enforced at runtime</h2>
+      <h2 id="controls-title">Controls — governed policies currently enforced at runtime</h2>
     </div>
     <span class="control-count">{{ rows|length }} controls registered</span>
   </div>

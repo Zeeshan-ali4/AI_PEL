@@ -98,6 +98,12 @@
 
 <section class="card">
   <h2>Enforcement</h2>
+  {% if enforcement_mode == "shadow" and would_have %}
+  <div class="banner banner-warning" style="margin-bottom: 0.875rem;">
+    <strong>Executed (shadow) — {{ would_have }}{% if control_id %} — {{ control_id }}{% endif %}.</strong>
+    <p>The action executed because the control is in shadow mode, while the record preserves the full-enforcement result that would have applied.</p>
+  </div>
+  {% endif %}
   <p class="card-note">
     Executed: <strong style="color: var(--text);">{{ executed }}</strong>
     {% if would_have %}— {{ would_have }}{% endif %}

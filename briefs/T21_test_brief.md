@@ -1,142 +1,154 @@
 # Test Brief — T21: README + demo script (narration)
 
 ## Spec references
-- MASTER_SPEC.md: §1 (what the demo proves, deliberately-not-in-scope list), §1A (value pillars), §1B (sensitivity/framing — no Horizon hook or recommendation numbers), §3 (architecture), §6 (control library, threshold default), §7 (six narrative scenarios — exact decisions/controls/roles/confidences), §8/§8A (enforcement modes, assurance UI), §9 (auditable surface counter), §12 (acceptance criteria).
-- TASK_LEDGER.md: T21 — "Done when: a stranger can `docker compose up` and run the demo from the script alone; the narration leads with assurance value." Verify: follow the README on a clean checkout; run the demo from the script.
-- Architect Brief: `briefs/T21_architect_brief.md` — required README sections, required DEMO_SCRIPT.md content, non-negotiables on scenario outcomes and real-vs-stub honesty.
-
-These are documentation artefacts, so "functional/acceptance tests" here are **content-presence and content-correctness assertions** against the rendered Markdown text of `README.md` and `DEMO_SCRIPT.md` — not behavioural tests of running code. Tests must read the actual files from the repo root (no mocking the file content) and assert on their text.
+- `MASTER_SPEC.md`: §1 (what the demo proves and deliberately-not-in-scope list), §1A (Head of Risk and Assurance value pillars), §1B (sensitivity/framing guidance), §3 (logical architecture), §5.5 (hash-chained evidence records), §6 (control library, decision precedence, configurable threshold), §7 (six narrative scenarios and exact outcomes), §8/§8A (enforcement modes and assurance UI), §9 (auditable surface counter), §12 (acceptance criteria), §13 (scope fences).
+- `TASK_LEDGER.md`: T21 — README + demo script (narration), including the ten required beats in order, the three ledger-authorised demo-support additions, the `Done when` criteria, and the T21 Verify step.
+- `briefs/T21_architect_brief.md`: required README/script content, allowed files, non-negotiable scenario outcomes, real-vs-stubbed honesty list, shadow-mode/fail-closed requirements, and the requirement for real pytest checks covering docs plus any T21 runtime/template additions.
 
 ## Target test location
 - Folder: `tests/T21_readme_demo/`
 - Suggested files:
-  - `tests/T21_readme_demo/__init__.py` — empty package marker
-  - `tests/T21_readme_demo/test_readme_content.py` — covers test cases 1–9 (README structural/content checks)
-  - `tests/T21_readme_demo/test_demo_script_content.py` — covers test cases 10–17 (DEMO_SCRIPT.md narration checks)
-  - `tests/T21_readme_demo/test_cross_doc_consistency.py` — covers test cases 18–20 (README/DEMO_SCRIPT/spec consistency checks)
+  - `tests/T21_readme_demo/__init__.py` — empty package marker.
+  - `tests/T21_readme_demo/test_readme_content.py` — README structure, run instructions, architecture, honesty list, scenario table, threshold/audit semantics.
+  - `tests/T21_readme_demo/test_demo_script_content.py` — spoken narration, value pillars, ten-beat order, scenario walkthroughs, threshold/audit/fail-closed moments, sensitivity constraints.
+  - `tests/T21_readme_demo/test_cross_doc_consistency.py` — README/DEMO_SCRIPT/spec consistency, port/URL consistency, no prohibited framing, illustrative-mapping caveats.
+  - `tests/T21_readme_demo/test_demo_support_behaviour.py` — acceptance checks for any T21 runtime/template additions that are missing and therefore implemented: dashboard aggregate stats, shadow-mode callout, and one-shot OPA failure simulation.
 
 ## Test cases
 
 ### test_readme_states_audience_and_purpose
-- **Traces to:** Architect Brief — "State what the demo is and whom it is for"; MASTER_SPEC.md §1A
-- **Input:** Full text of `README.md`
-- **Expected outcome:** README mentions the product is a runtime policy enforcement gate demo, and explicitly names the Head of Risk and Assurance (or equivalent risk/assurance audience) as the intended audience.
-- **Notes:** Case-insensitive substring/keyword check is acceptable; do not require exact phrasing.
+- **Traces to:** `MASTER_SPEC.md` §1A; Architect Brief implementation objective.
+- **Input:** Full text of `README.md` read from repo root.
+- **Expected outcome:** README identifies the product as a runtime policy enforcement gate demo and explicitly names the Head of Risk and Assurance, or an unambiguous equivalent risk/assurance buyer audience.
+- **Notes:** Case-insensitive keyword assertions are acceptable; do not require exact prose.
 
 ### test_readme_leads_with_assurance_value_before_implementation_detail
-- **Traces to:** Architect Brief — "Explain the assurance value before implementation detail"; MASTER_SPEC.md §1A
-- **Input:** Full text of `README.md`, split into sections by Markdown headings
-- **Expected outcome:** A value/assurance-oriented section (e.g., human oversight, evidential reliability, demonstrable control operation) appears before the architecture/run-instructions sections in document order.
-- **Notes:** Assert relative ordering of heading indices, not exact wording.
+- **Traces to:** `MASTER_SPEC.md` §1A; Architect Brief — explain assurance value before implementation detail.
+- **Input:** `README.md` split by Markdown headings.
+- **Expected outcome:** A value/assurance section referencing human oversight, evidential reliability, demonstrable control operation, governed/configurable policy, or proportionate deterministic enforcement appears before architecture and run-instruction sections.
+- **Notes:** Assert section ordering rather than exact heading names.
 
-### test_readme_documents_run_instructions
-- **Traces to:** Architect Brief — "Document how to run the stack with `docker compose up`/`docker compose up --build`, including the app URL and key pages"
-- **Input:** Full text of `README.md`
-- **Expected outcome:** README contains the literal command `docker compose up` (or `--build` variant), the app URL `http://localhost:8080`, and references to at least the dashboard, scenario runner, approval queue, evidence record, audit log, and settings pages (by path or name).
-- **Notes:** Verify ports match `docker-compose.yml`/`app/config.py` (8080 app, 8181 OPA, 5432 Postgres) so the README cannot silently drift from the real config.
+### test_readme_documents_clean_checkout_run_instructions
+- **Traces to:** `TASK_LEDGER.md` T21 Done when and Verify step.
+- **Input:** `README.md`, `docker-compose.yml`, and any app config file that declares public ports.
+- **Expected outcome:** README includes `docker compose up` or `docker compose up --build`, the app URL `http://localhost:8080`, and describes how to reach the dashboard, scenario runner/live feed, approval queue, evidence/audit records, audit log, and settings/control pages.
+- **Notes:** Assert the documented app/OPA/Postgres ports do not contradict compose/config values: app `8080`, OPA `8181`, Postgres `5432`.
 
 ### test_readme_architecture_paragraph_matches_spec_pipeline
-- **Traces to:** Architect Brief — "Summarise the architecture in one clear paragraph aligned to MASTER_SPEC.md §3"
-- **Input:** Full text of `README.md`
-- **Expected outcome:** README contains a paragraph naming the pipeline stages from §3 in order (agent simulator/PEP interception, normaliser, context resolver, semantic evidence layer, OPA policy decision, enforcement, audit/evidence store, assurance UI), without inventing extra stages.
-- **Notes:** Use ordered keyword presence (each stage keyword found, and each subsequent stage's first occurrence is after the previous one).
+- **Traces to:** `MASTER_SPEC.md` §3.
+- **Input:** Full text of `README.md`.
+- **Expected outcome:** README names the pipeline stages in order: agent simulator or PEP interception, action normaliser, context resolver, semantic evidence layer, OPA/Rego policy decision, enforcement handler, Postgres/hash-chained audit or evidence store, assurance UI.
+- **Notes:** Use ordered keyword positions; do not allow invented decision-making by the model.
 
 ### test_readme_real_vs_stubbed_list_is_complete_and_accurate
-- **Traces to:** Architect Brief — "Include an explicit 'What is real vs stubbed' honesty list"; MASTER_SPEC.md §1, §13
-- **Input:** Full text of `README.md`
-- **Expected outcome:** README contains a clearly labelled section listing as REAL: Presidio sensor, OPA/Rego policy engine, Postgres-backed hash-chained audit store; and as STUBBED/FIXTURE: MCP interception, enterprise connectors/context, nuance/model stub, auth/multi-tenancy/production scale, illustrative framework mappings/control packs.
-- **Notes:** This is a non-negotiable per AGENTS.md ("Stubs must be visibly labelled as stubs"). Fail the test if any required real or stubbed item is missing.
+- **Traces to:** `MASTER_SPEC.md` §1 and §13; AGENTS.md non-negotiable that stubs are visibly labelled.
+- **Input:** Full text of `README.md`.
+- **Expected outcome:** README has a clearly labelled real-vs-stubbed section. It lists as real: Presidio, OPA/Rego, Postgres-backed append-only SHA-256 hash chain, and configured controls/settings affecting policy input. It lists as stubbed/fixture/demo-only: MCP interception, enterprise connectors/context fixtures, nuance/model stub, production auth/multi-tenancy/scale, illustrative framework mappings/control packs, and the one-shot OPA failure simulation.
+- **Notes:** This is a hard acceptance check; missing any required item fails.
 
 ### test_readme_summarises_six_scenarios_matching_spec_exactly
-- **Traces to:** MASTER_SPEC.md §7 (six narrative scenarios); Architect Brief non-negotiables
-- **Input:** Full text of `README.md`
-- **Expected outcome:** For each of the six scenarios, README states the correct decision and (where applicable) control ID/approval role, exactly matching: #1 allow/none; #2 escalate/finance_supervisor/FIN-PAY-002; #3 block/FIN-PAY-001; #4 escalate/data_protection_approver/COMM-EMAIL-001; #5 escalate/vulnerable_customer_team/COMM-EMAIL-002; #6 allow_with_logging/COMM-EMAIL-003.
-- **Notes:** Parametrize over the six scenarios; assert presence of decision keyword and control ID/role token for each. This is the regression guard against the demo narrative drifting from §7, mirroring the spirit of T20's `test_policy_decisions.py`.
+- **Traces to:** `MASTER_SPEC.md` §7; Architect Brief non-negotiables.
+- **Input:** Full text of `README.md`.
+- **Expected outcome:** README states the exact scenario outcomes:
+  - Scenario 1: `allow`, no triggered control.
+  - Scenario 2: `escalate`, `FIN-PAY-002`, required approval role `finance_supervisor`.
+  - Scenario 3: `block`, `FIN-PAY-001`.
+  - Scenario 4: `escalate`, `COMM-EMAIL-001`, required approval role `data_protection_approver`, stub confidence `0.88`.
+  - Scenario 5: `escalate`, `COMM-EMAIL-002`, required approval role `vulnerable_customer_team`, stub confidence `0.62` at threshold `0.75`, and `allow_with_logging` at threshold `0.60`.
+  - Scenario 6: `allow_with_logging`, `COMM-EMAIL-003`.
+- **Notes:** Parametrize over a literal expected mapping in the test file; do not import app policy code for this doc-content assertion.
 
-### test_readme_mentions_semantic_layer_skip_for_payments
-- **Traces to:** Architect Brief — "Mention that payment scenarios intentionally skip the semantic layer... model/stub is not the judge"; MASTER_SPEC.md §2, §3
-- **Input:** Full text of `README.md`
-- **Expected outcome:** README states that payment actions do not invoke the semantic/evidence layer, and states plainly that the model/stub provides evidence only and is not the decision-maker (OPA is).
-- **Notes:** Check for both the "payments skip semantics" claim and the "model is not the judge" claim as separate assertions.
+### test_readme_mentions_payment_semantic_skip_and_model_not_judge
+- **Traces to:** `MASTER_SPEC.md` §2 and §3; Architect Brief non-negotiables.
+- **Input:** Full text of `README.md`.
+- **Expected outcome:** README states payment scenarios intentionally skip the semantic evidence layer, and states that the model/stub provides bounded evidence only while OPA/Rego is the binding decision-maker.
+- **Notes:** Assert both claims separately.
 
-### test_readme_mentions_threshold_behaviour
-- **Traces to:** Architect Brief — "Mention settings/threshold behaviour: default threshold 0.75, lowering to 0.60 flips Scenario 5 to allow_with_logging"; MASTER_SPEC.md §6, §8A item 7
-- **Input:** Full text of `README.md`
-- **Expected outcome:** README states the default `high_confidence_threshold` is 0.75 and that lowering it to 0.60 changes Scenario 5's outcome from `escalate` to `allow_with_logging`.
-- **Notes:** Numeric values must appear verbatim (0.75 and 0.60); do not accept paraphrase without the numbers.
-
-### test_readme_mentions_audit_chain_verification_and_tamper_simulation
-- **Traces to:** Architect Brief — "Mention audit-chain verification and tamper simulation"; MASTER_SPEC.md §5.5, §8A item 6
-- **Input:** Full text of `README.md`
-- **Expected outcome:** README references "Verify chain" and "Simulate tampering" (or equivalent named features) and states that tampering causes the chain check to fail and name the broken record.
-- **Notes:** Keyword presence check; case-insensitive.
+### test_readme_mentions_threshold_audit_shadow_and_fail_closed_behaviour
+- **Traces to:** `MASTER_SPEC.md` §6, §8A; `TASK_LEDGER.md` T21 beats 6, 8, 9, 10.
+- **Input:** Full text of `README.md`.
+- **Expected outcome:** README documents default semantic threshold `0.75`, lowering to `0.60` flipping Scenario 5 to `allow_with_logging`, shadow mode executing while showing the full-enforcement decision that would have applied, audit-chain verify/tamper/download features, and fail-closed behaviour when OPA/policy evaluation is unreachable.
+- **Notes:** Numeric threshold values must appear verbatim.
 
 ### test_demo_script_leads_with_assurance_value_pillars
-- **Traces to:** Architect Brief — "Lead with assurance value, human oversight, evidential reliability, demonstrable control operation, risk-owned policy, and deterministic/proportionate enforcement"; MASTER_SPEC.md §1A
-- **Input:** Full text of `DEMO_SCRIPT.md`
-- **Expected outcome:** The opening section (before the first scenario walkthrough) contains references to at least 4 of the 5 value pillars in §1A (human oversight/contestability, evidential reliability/integrity, demonstrable control operation, governed/configurable policy, proportionate/deterministic enforcement).
-- **Notes:** Locate the index of the first scenario-walkthrough heading/marker; restrict the pillar search to text before that index.
+- **Traces to:** `MASTER_SPEC.md` §1A.
+- **Input:** Opening section of `DEMO_SCRIPT.md` before the first scenario/beat walkthrough.
+- **Expected outcome:** Opening narration references at least four of the five value pillars: human oversight/contestability, evidential reliability/integrity, demonstrable control operation, governed/configurable policy, proportionate/deterministic enforcement.
+- **Notes:** Prefer all five; at least four prevents brittle wording failures.
+
+### test_demo_script_contains_ten_beats_in_required_order
+- **Traces to:** `TASK_LEDGER.md` T21 key notes.
+- **Input:** Full text of `DEMO_SCRIPT.md`.
+- **Expected outcome:** The ten beats appear in exactly this order: dashboard calm; routine live feed; enforcement live feed; human oversight; semantic evidence; shadow mode; policy control; confidence threshold; audit integrity; fail closed.
+- **Notes:** Assert increasing text positions for beat headings/markers; the terms may be heading text or clear narration labels.
 
 ### test_demo_script_walks_through_six_scenarios_in_order_with_correct_outcomes
-- **Traces to:** Architect Brief — "Walk through all six scenarios in order with the exact expected outcomes and controls from MASTER_SPEC.md §7"
-- **Input:** Full text of `DEMO_SCRIPT.md`
-- **Expected outcome:** Scenarios 1–6 appear in ascending numeric order in the document, and for each, the narration states the same decision/control/role values as `test_readme_summarises_six_scenarios_matching_spec_exactly` (same §7 mapping). Scenario 4 narration mentions stub confidence 0.88; Scenario 5 narration mentions stub confidence 0.62.
-- **Notes:** Assert strictly increasing position of each scenario marker (e.g., "Scenario 1", "Scenario 2", ...) to enforce ordering, plus the decision/confidence keyword checks per scenario.
+- **Traces to:** `MASTER_SPEC.md` §7; Architect Brief non-negotiables.
+- **Input:** Full text of `DEMO_SCRIPT.md`.
+- **Expected outcome:** Scenario markers 1–6 appear in ascending order. Each scenario states the same decision/control/role mapping as the README test above. Scenario 4 mentions stub confidence `0.88`; Scenario 5 mentions stub confidence `0.62`, default threshold `0.75`, and the threshold `0.60` flip to `allow_with_logging`.
+- **Notes:** The six scenarios may be distributed across the ten beats, but each must be narratable from the script alone.
 
-### test_demo_script_includes_tamper_evident_chain_moment
-- **Traces to:** Architect Brief — "Include the tamper-evident audit chain moment: verify intact, simulate tampering, then show the named broken record"; MASTER_SPEC.md §8A item 6
-- **Input:** Full text of `DEMO_SCRIPT.md`
-- **Expected outcome:** Script narrates, in order: (1) running "Verify chain" showing intact, (2) running "Simulate tampering", (3) re-verifying and naming the broken record as the result.
-- **Notes:** Assert the three beats appear with the verify-intact beat occurring before the tamper beat, and the tamper beat before the re-verify/broken-record beat.
+### test_demo_script_includes_shadow_mode_policy_control_threshold_audit_and_fail_closed_moments
+- **Traces to:** `TASK_LEDGER.md` T21 beats 6–10; `MASTER_SPEC.md` §8A.
+- **Input:** Full text of `DEMO_SCRIPT.md`.
+- **Expected outcome:** Script narrates: shadow mode makes Scenario 3 execute while showing would-have-blocked `FIN-PAY-001`; disabling/re-enabling `FIN-PAY-002` and changing its threshold `500` → `1000` → `500`; changing semantic threshold `0.75` → `0.60`; verifying audit chain intact, simulating tampering, re-verifying broken record/mismatched hashes, downloading audit package; triggering one-shot policy-engine failure, seeing `fail_closed`, then seeing the following event run normally.
+- **Notes:** Assert ordering within each moment where meaningful (e.g., verify intact before tamper before broken result).
 
-### test_demo_script_includes_threshold_change_moment
-- **Traces to:** Architect Brief — "Include the threshold-change moment: at 0.75 Scenario 5 escalates; at 0.60 it allows with logging"; MASTER_SPEC.md §8A item 7
-- **Input:** Full text of `DEMO_SCRIPT.md`
-- **Expected outcome:** Script states Scenario 5 escalates at threshold 0.75 and flips to `allow_with_logging` at threshold 0.60, narrated as a live settings change.
-- **Notes:** Numeric values 0.75 and 0.60 must appear verbatim alongside Scenario 5 context.
-
-### test_demo_script_explains_real_vs_stubbed_in_buyer_safe_language
-- **Traces to:** Architect Brief — "Explicitly explain real vs stubbed components in honest buyer-safe language"; MASTER_SPEC.md §1, §13
-- **Input:** Full text of `DEMO_SCRIPT.md`
-- **Expected outcome:** Script contains a spoken-narration passage distinguishing real components (Presidio, OPA, hash chain/Postgres) from stubbed/fixture components (MCP interception, connectors, nuance stub, auth/scale), phrased as narration rather than a bare bullet/engineering list.
-- **Notes:** At minimum assert presence of all required real/stub keywords (same set as the README real-vs-stubbed test) within `DEMO_SCRIPT.md`.
-
-### test_demo_script_and_readme_omit_horizon_references
-- **Traces to:** Architect Brief — "Honour the sensitivity guidance: do not use Horizon as the hook, do not cite Horizon Inquiry recommendation numbers"; MASTER_SPEC.md §1B, §13
-- **Input:** Full text of `README.md` and `DEMO_SCRIPT.md`
-- **Expected outcome:** Neither file contains the word "Horizon" (case-insensitive) nor any pattern resembling a Horizon Inquiry recommendation citation (e.g., "recommendation \d+" in proximity to Horizon-style phrasing).
-- **Notes:** This is a hard negative-content assertion — fail on any match. Spec non-negotiable, not a style preference.
-
-### test_demo_script_and_readme_label_illustrative_framework_mappings
-- **Traces to:** MASTER_SPEC.md §6 (mappings are illustrative) and §1B labelling requirement
-- **Input:** Full text of `README.md` and `DEMO_SCRIPT.md`
-- **Expected outcome:** Wherever framework/control mappings (e.g., ISO/IEC 42001, UK GDPR, "3 Lines of Defence") are referenced, at least one nearby/explicit statement labels these mappings as illustrative — not asserted as certified/production-audited mappings.
-- **Notes:** A single explicit caveat sentence covering all mappings in each document is sufficient; it does not need to be repeated per mention.
-
-### test_readme_and_demo_script_scenario_tables_are_mutually_consistent
-- **Traces to:** Internal consistency requirement implied by AGENTS.md ("Scenario outcomes must match MASTER_SPEC.md section 7 exactly") applied across both documents
-- **Input:** Extracted per-scenario decision/control/role tokens from `README.md` and `DEMO_SCRIPT.md`
-- **Expected outcome:** For each of the six scenarios, the decision/control/role extracted from README equals the decision/control/role extracted from DEMO_SCRIPT.md, and both equal the §7 table.
-- **Notes:** Build the §7 expectations as a literal dict inside the test (mirroring the table) rather than importing from app code, since this task touches docs only.
-
-### test_readme_run_instructions_are_followable_on_clean_checkout
-- **Traces to:** TASK_LEDGER.md T21 "Done when" — "a stranger can `docker compose up` and run the demo from the script alone"
-- **Input:** `README.md` text; `docker-compose.yml`; `app/config.py`
-- **Expected outcome:** Every command and URL the README instructs the reader to run/visit is internally consistent with the actual `docker-compose.yml` service/port definitions (app 8080, opa 8181, postgres 5432) — i.e., no contradicting port/URL numbers.
-- **Notes:** This guards against the README describing a setup that doesn't match the real compose file (e.g., a stale port from the T01 scaffold draft).
+### test_demo_script_explains_real_vs_stubbed_in_buyer_safe_spoken_language
+- **Traces to:** `MASTER_SPEC.md` §1 and §13; Architect Brief implementation objective.
+- **Input:** Full text of `DEMO_SCRIPT.md`.
+- **Expected outcome:** Script contains spoken narration, not only a bare engineering list, that distinguishes real components (Presidio, OPA/Rego, Postgres/hash chain) from stubbed/fixture/demo-only parts (MCP interception, connectors/context, nuance/model stub, auth/multi-tenancy/scale, illustrative mappings/control packs, one-shot failure simulation).
+- **Notes:** Keyword coverage plus a prose/sentence-count heuristic is acceptable.
 
 ### test_demo_script_is_standalone_spoken_narration_not_engineering_notes
-- **Traces to:** Architect Brief — "The demo script should be written as spoken narration, not engineering notes"
-- **Input:** Full text of `DEMO_SCRIPT.md`
-- **Expected outcome:** Document contains a reasonable proportion of full narrative sentences (ending in `.`/`?`/`!`) rather than being composed entirely of terse bullet fragments or code blocks; assert there is no fenced code block longer than a few lines and that prose sentence count exceeds a minimum threshold (e.g., at least 20 sentences across the document).
-- **Notes:** This is a soft structural heuristic, not a strict grammar check — keep the threshold generous to avoid false failures on reasonable narration styles.
+- **Traces to:** `TASK_LEDGER.md` T21 demo-script pacing and reviewer focus.
+- **Input:** Full text of `DEMO_SCRIPT.md`.
+- **Expected outcome:** Script contains enough full sentences for a 12–15 minute spoken narration, has no long fenced code blocks, and does not read only as terse bullet fragments.
+- **Notes:** Suggested heuristic: at least 20 prose sentences and no fenced code block longer than a few lines.
+
+### test_readme_and_demo_script_omit_prohibited_horizon_framing
+- **Traces to:** `MASTER_SPEC.md` §1B and §13; Architect Brief non-negotiables.
+- **Input:** `README.md` and `DEMO_SCRIPT.md`.
+- **Expected outcome:** Neither file contains the word `Horizon` case-insensitively or citation-like text that references Horizon Inquiry recommendation numbers.
+- **Notes:** This is a hard negative-content assertion.
+
+### test_readme_and_demo_script_label_framework_mappings_as_illustrative
+- **Traces to:** `MASTER_SPEC.md` §6 and §1B.
+- **Input:** `README.md` and `DEMO_SCRIPT.md`.
+- **Expected outcome:** Each document explicitly labels framework/control mappings as illustrative/demo mappings, not certified or production-audited mappings.
+- **Notes:** One clear caveat sentence per document is sufficient.
+
+### test_readme_and_demo_script_scenario_tables_are_mutually_consistent
+- **Traces to:** AGENTS.md scenario-outcome non-negotiable; `MASTER_SPEC.md` §7.
+- **Input:** Per-scenario tokens extracted from `README.md` and `DEMO_SCRIPT.md`.
+- **Expected outcome:** For each scenario, both documents agree with each other and with the literal §7 expected mapping for decision, control ID, approval role, and relevant confidence/threshold values.
+- **Notes:** Use a literal expected mapping in the test module rather than app code.
+
+### test_dashboard_aggregate_stats_render_and_update_if_touched
+- **Traces to:** `TASK_LEDGER.md` T21 beat 1 and demo-support addition 1.
+- **Input:** Running app/database via the existing test harness or FastAPI test client with the real application code; create/run one or more scenario evaluations using existing scenario routes/helpers.
+- **Expected outcome:** Dashboard exposes total evaluations, decision breakdown (% or counts for allowed/escalated/blocked), and action-type breakdown; after an evaluation is recorded, the displayed aggregate totals increase consistently.
+- **Notes:** Required if T21 adds or changes dashboard stats. Do not mock the file content. Use the existing app/database testing pattern for this repo.
+
+### test_shadow_mode_callout_renders_executed_shadow_would_have_decision_if_touched
+- **Traces to:** `TASK_LEDGER.md` T21 beat 6; `MASTER_SPEC.md` §8.
+- **Input:** A shadow-mode scenario/evidence record whose underlying policy decision would be `block` for `FIN-PAY-001`.
+- **Expected outcome:** The decision/record/event-feed UI clearly renders that the action executed because mode is `shadow`, while also showing the full-enforcement result, e.g. `would have blocked` and `FIN-PAY-001`.
+- **Notes:** Required if the existing UI did not already make shadow-mode state clear and T21 changes it.
+
+### test_one_shot_policy_engine_failure_auto_resets_if_touched
+- **Traces to:** `TASK_LEDGER.md` T21 beat 10; `MASTER_SPEC.md` §2 fail-closed principle.
+- **Input:** Trigger the T21 one-shot policy-engine failure flag through the same route/store used by the UI, then evaluate two actions in sequence.
+- **Expected outcome:** First evaluation returns/renders decision `fail_closed` with policy-engine-unreachable messaging and enhanced audit evidence; the failure flag is consumed/reset; the second evaluation calls the normal OPA path and returns its normal scenario decision.
+- **Notes:** Required if T21 implements the one-shot failure button/flag. This is not a mock of OPA behaviour; it is a deliberate demo control that must auto-reset and must be visibly labelled as simulated.
 
 ## Coverage checklist
-- [x] Happy path covered (README/DEMO_SCRIPT contain all required sections and correct §7 outcomes)
-- [x] Error/edge cases covered (negative checks: no Horizon hook, no missing real/stub labels, no port/URL drift, cross-document consistency)
-- [x] Spec non-negotiables verified (model-not-judge framing, illustrative mapping labelling, append-only/tamper-evident narration, §7 exact outcomes, §1B sensitivity constraints)
-- [x] Real dependencies flagged: not applicable in the literal sense (no OPA/Presidio/Postgres calls in these tests — they are pure text-content tests over committed Markdown files), but the tests explicitly assert the README labels OPA/Presidio/Postgres as real and not mocked in the product itself.
+- [x] Happy path covered: README and DEMO_SCRIPT contain required sections, clean-checkout run instructions, six exact §7 outcomes, and the ten-beat script order.
+- [x] Error/edge cases covered: no prohibited Horizon framing, no real-vs-stub omissions, no README/compose port drift, no README/DEMO_SCRIPT scenario drift, threshold flip documented, tamper/fail-closed moments documented.
+- [x] Spec non-negotiables verified: model is not the judge, OPA/Rego is binding, payments skip semantics, shadow mode is honest, fail closed is default, stubs/fixtures are visibly labelled, mappings are illustrative, §7 outcomes are exact.
+- [x] Real dependencies flagged: doc-content tests are pure file reads; runtime checks for T21 code additions should use the repo's real application/test database patterns and should not replace OPA/Presidio/Postgres behaviour with broad mocks. The one-shot failure simulation is allowed only as the ledger-authorised demo control and must auto-reset.
 
 ## Gaps or ambiguities
-- The Architect Brief does not specify an exact required heading structure for either document, so tests above use keyword/ordering checks rather than exact-heading-match checks. If the Implementer wants stricter structural tests (e.g., exact `## Real vs Stubbed` heading text), that is an acceptable Implementer-level refinement consistent with this brief's intent, not a deviation from it.
-- "At least 4 of the 5 value pillars" in `test_demo_script_leads_with_assurance_value_pillars` is a deliberately tolerant threshold since the architect brief lists pillars descriptively rather than as a strict checklist; if the Implementer/QA prefer requiring all 5, that is a stricter superset and still satisfies this brief.
+- T21's file list names only `README.md` and `DEMO_SCRIPT.md`, but the task notes authorise three minor runtime/template additions if missing. The Implementer must first inspect existing behaviour. If a capability already exists, do not touch its runtime code; keep the corresponding behaviour test as a regression check only if it can be written against the existing app without adding scope.
+- The spec and architect brief do not require exact Markdown heading names, so tests should use robust keyword and ordering assertions rather than brittle heading equality.
+- The manual Verify step (running the full 12–15 minute demo after `docker compose up --build`) remains required in addition to these pytest checks; pytest cannot prove the spoken pacing or buyer-room tone by itself.

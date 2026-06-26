@@ -30,16 +30,31 @@
 <section class="card">
   <h2>Pending escalations</h2>
 
+  <form method="get" action="/approvals" class="form-stack" style="max-width: 20rem; margin-bottom: 1rem;">
+    <label class="field-label" for="role-filter">Filter by required role</label>
+    <select id="role-filter" name="role" onchange="this.form.submit()">
+      {% for option in role_options %}
+      <option value="{{ option }}" {{ 'selected' if option == selected_role else '' }}>{{ option }}</option>
+      {% endfor %}
+    </select>
+  </form>
+
   {% if not pending_rows %}
-  <p>No escalations are currently awaiting a human decision.</p>
+  <p>No escalations are currently awaiting a human decision{{ ' for ' + selected_role if selected_role != 'All' else '' }}.</p>
   {% else %}
   <ul class="list-clean" style="margin-top: 1rem;">
     {% for row in pending_rows %}
     <li class="list-item list-item-escalated" data-item-id="{{ row.item_id }}">
       <span class="eyebrow">Awaiting decision from {{ row.required_approval_role }}</span>
       <p style="margin: 0 0 0.375rem; color: var(--text); font-weight: 500;">{{ row.summary }}</p>
+      <p class="card-note" style="margin-bottom: 0.375rem;">
+        Escalated <span class="mono">{{ row.created_at }}</span>
+      </p>
       <p class="card-note" style="margin-bottom: 0.875rem;">
         Control: <span class="mono">{{ row.control_id }}</span> — {{ row.reason }}
+        {% if row.trace_link %}
+        — <a href="{{ row.trace_link }}">View trace</a>
+        {% endif %}
       </p>
 
       <div class="decision-grid">

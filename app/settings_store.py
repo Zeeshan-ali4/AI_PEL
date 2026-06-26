@@ -240,7 +240,11 @@ class SettingsStore:
             raise ValueError(f"Invalid column type: {column_type!r}")
         existing = {row[1] for row in connection.execute("PRAGMA table_info(runtime_settings)").fetchall()}
         if column not in existing:
-            connection.execute(f"ALTER TABLE runtime_settings ADD COLUMN {column} {column_type}")
+            # column/column_type are validated above against an identifier regex and a
+            # fixed type whitelist; DDL identifiers can't be bound as query parameters.
+            connection.execute(  # nosemgrep: python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query
+                f"ALTER TABLE runtime_settings ADD COLUMN {column} {column_type}"
+            )
 
     def _fetch_settings(self) -> RuntimeSettings | None:
         if self._uses_sqlite:

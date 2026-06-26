@@ -16,6 +16,8 @@ from fastapi import APIRouter, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
+from app.audit.models import GENESIS_PREV_HASH
+from app.audit.store import _hash_payload
 from app.context import resolver as context_resolver
 from app.normaliser.normaliser import normalise
 from app.pipeline import PipelineResult, UnknownScenarioError, get_pipeline
@@ -827,10 +829,27 @@ def _build_audit_rows(records: list[EvidenceRecord]) -> list[dict[str, Any]]:
     """Chronological, assurance-readable rows for the T18/T25 audit log."""
 
     rows = []
-    expected_prev_hash = "0" * 64
+    expected_prev_hash = GENESIS_PREV_HASH
     previous_record_id: int | None = None
     for record in records:
+        row_for_hash = {
+            "correlation_id": record.correlation_id,
+            "action": record.action,
+            "context_used": record.context_used,
+            "evidence": record.evidence,
+            "decision": record.decision,
+            "enforcement_mode": str(record.enforcement_mode),
+            "executed": record.executed,
+            "record_type": str(record.record_type),
+            "references_hash": record.references_hash,
+            "human_approver": record.human_approver,
+            "approval_reason": record.approval_reason,
+            "created_at": record.created_at,
+            "prev_hash": record.prev_hash,
+        }
+        recomputed_record_hash = _hash_payload(row_for_hash, record.prev_hash)
         link_intact = record.prev_hash == expected_prev_hash
+        hash_intact = recomputed_record_hash == record.record_hash
         rows.append(
             {
                 "id": record.id,
@@ -842,8 +861,11 @@ def _build_audit_rows(records: list[EvidenceRecord]) -> list[dict[str, Any]]:
                 "record_hash": record.record_hash,
                 "prev_hash": record.prev_hash,
                 "expected_prev_hash": expected_prev_hash,
+                "recomputed_record_hash": recomputed_record_hash,
                 "previous_record_id": previous_record_id,
                 "link_intact": link_intact,
+                "hash_intact": hash_intact,
+                "chain_status": "intact" if link_intact and hash_intact else "broken",
             }
         )
         expected_prev_hash = record.record_hash

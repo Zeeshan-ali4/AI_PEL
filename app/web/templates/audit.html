@@ -114,12 +114,26 @@
             <td class="mono">{{ row.correlation_id }}</td>
             <td>{{ row.decision }}</td>
             <td>{{ row.executed }}</td>
-            {% if broken_record_id == row.id %}
-            <td><span class="decision-badge decision-block">Broken link</span><br><span class="eyebrow">{{ broken_reason }}</span><br><span class="mono" title="{{ row.expected_prev_hash }}">expected {{ row.expected_prev_hash[:12] }}&hellip;</span><br><span class="mono" title="{{ row.prev_hash }}">found {{ row.prev_hash[:12] }}&hellip;</span></td>
-            {% elif row.link_intact %}
-            <td><span class="decision-badge decision-allow">Green link</span><br><span class="eyebrow">prev matches {{ "genesis" if not row.previous_record_id else "record " ~ row.previous_record_id }}</span></td>
+            {% if broken_record_id == row.id and broken_reason == "record_hash mismatch" %}
+            <td data-chain-status="broken" data-chain-failure="record_hash mismatch">
+              <span class="decision-badge decision-block">Record hash mismatch</span><br>
+              <span class="eyebrow">Stored record_hash no longer matches this row's recomputed hash</span><br>
+              <span class="mono break-all" title="{{ row.record_hash }}">stored record_hash {{ row.record_hash }}</span><br>
+              <span class="mono break-all" title="{{ row.recomputed_record_hash }}">recomputed expected {{ row.recomputed_record_hash }}</span>
+            </td>
+            {% elif broken_record_id == row.id and broken_reason == "prev_hash linkage mismatch" %}
+            <td data-chain-status="broken" data-chain-failure="prev_hash linkage mismatch">
+              <span class="decision-badge decision-block">Prev-hash linkage mismatch</span><br>
+              <span class="eyebrow">This row points to the wrong predecessor hash</span><br>
+              <span class="mono break-all" title="{{ row.expected_prev_hash }}">expected prev_hash {{ row.expected_prev_hash }}</span><br>
+              <span class="mono break-all" title="{{ row.prev_hash }}">found prev_hash {{ row.prev_hash }}</span>
+            </td>
+            {% elif row.link_intact and row.hash_intact %}
+            <td data-chain-status="intact"><span class="decision-badge decision-allow">Green link</span><br><span class="eyebrow">prev matches {{ "genesis" if not row.previous_record_id else "record " ~ row.previous_record_id }}</span></td>
+            {% elif not row.hash_intact %}
+            <td data-chain-status="broken" data-chain-failure="record_hash mismatch"><span class="decision-badge decision-block">Record hash mismatch</span><br><span class="mono break-all" title="{{ row.record_hash }}">stored record_hash {{ row.record_hash }}</span><br><span class="mono break-all" title="{{ row.recomputed_record_hash }}">recomputed expected {{ row.recomputed_record_hash }}</span></td>
             {% else %}
-            <td><span class="decision-badge decision-block">Broken link</span><br><span class="mono" title="{{ row.expected_prev_hash }}">expected {{ row.expected_prev_hash[:12] }}&hellip;</span><br><span class="mono" title="{{ row.prev_hash }}">found {{ row.prev_hash[:12] }}&hellip;</span></td>
+            <td data-chain-status="broken" data-chain-failure="prev_hash linkage mismatch"><span class="decision-badge decision-block">Prev-hash linkage mismatch</span><br><span class="mono break-all" title="{{ row.expected_prev_hash }}">expected prev_hash {{ row.expected_prev_hash }}</span><br><span class="mono break-all" title="{{ row.prev_hash }}">found prev_hash {{ row.prev_hash }}</span></td>
             {% endif %}
             <td class="mono" title="{{ row.record_hash }}">{{ row.record_hash[:12] }}&hellip;</td>
             <td class="mono" title="{{ row.prev_hash }}">{{ row.prev_hash[:12] }}&hellip;</td>

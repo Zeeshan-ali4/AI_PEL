@@ -223,25 +223,55 @@ class AuditStore:
 
         self._ensure_table()
         selected_correlation_id = str(correlation_id) if correlation_id is not None else None
+        all_records = self.read_records()
         records = [
             record
-            for record in self.read_records()
+            for record in all_records
             if selected_correlation_id is None or str(record.correlation_id) == selected_correlation_id
         ]
 
-        chain_links: list[dict[str, Any]] = []
+        previous_global_hash_by_id: dict[int, str] = {}
+        previous_global_id_by_id: dict[int, int | None] = {}
         expected_prev_hash = GENESIS_PREV_HASH
+        previous_global_id: int | None = None
+        for record in all_records:
+            previous_global_hash_by_id[record.id] = expected_prev_hash
+            previous_global_id_by_id[record.id] = previous_global_id
+            expected_prev_hash = record.record_hash
+            previous_global_id = record.id
+
+        selected_ids = {record.id for record in records}
+        chain_links: list[dict[str, Any]] = []
+        previous_selected_id: int | None = None
+        previous_selected_hash: str | None = None
         for record in records:
+            expected_global_prev_hash = previous_global_hash_by_id.get(record.id, GENESIS_PREV_HASH)
+            previous_global_record_id = previous_global_id_by_id.get(record.id)
+            selected_predecessor_is_adjacent = previous_global_record_id in selected_ids or previous_global_record_id is None
             chain_links.append(
                 {
                     "record_id": record.id,
                     "record_hash": record.record_hash,
                     "prev_hash": record.prev_hash,
-                    "expected_prev_hash": expected_prev_hash,
-                    "link_intact": record.prev_hash == expected_prev_hash,
+                    "expected_prev_hash": expected_global_prev_hash,
+                    "link_intact": record.prev_hash == expected_global_prev_hash,
+                    "link_intact_scope": "global_predecessor",
+                    "previous_global_record_id": previous_global_record_id,
+                    "previous_global_record_hash": None if previous_global_record_id is None else expected_global_prev_hash,
+                    "previous_selected_record_id": previous_selected_id,
+                    "previous_selected_record_hash": previous_selected_hash,
+                    "selected_predecessor_is_adjacent": selected_predecessor_is_adjacent,
+                    "boundary_context": (
+                        "starts_at_genesis"
+                        if previous_global_record_id is None
+                        else "previous_global_record_in_package"
+                        if previous_global_record_id in selected_ids
+                        else "previous_global_record_omitted_from_selection"
+                    ),
                 }
             )
-            expected_prev_hash = record.record_hash
+            previous_selected_id = record.id
+            previous_selected_hash = record.record_hash
 
         package_without_hash: dict[str, Any] = {
             "header": {

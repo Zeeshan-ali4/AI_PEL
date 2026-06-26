@@ -60,3 +60,22 @@ def test_audit_package_route_downloads_json_for_all_or_correlation_id(wired_pipe
     scoped = scoped_response.json()
     assert scoped["selection"]["correlation_id"] == str(record.correlation_id)
     assert [item["correlation_id"] for item in scoped["records"]] == [str(record.correlation_id)]
+
+
+def test_correlation_id_package_uses_global_predecessor_for_segment_boundary(store, write_sample_record):
+    unrelated = write_sample_record(store)
+    selected_first = write_sample_record(store)
+    selected_second = write_sample_record(store, correlation_id=selected_first.correlation_id)
+
+    package = store.export_audit_package(correlation_id=selected_first.correlation_id)
+
+    assert [record["id"] for record in package["records"]] == [selected_first.id, selected_second.id]
+    first_link, second_link = package["chain_links"]
+    assert first_link["expected_prev_hash"] == unrelated.record_hash
+    assert first_link["prev_hash"] == unrelated.record_hash
+    assert first_link["link_intact"] is True
+    assert first_link["link_intact_scope"] == "global_predecessor"
+    assert first_link["previous_global_record_id"] == unrelated.id
+    assert first_link["boundary_context"] == "previous_global_record_omitted_from_selection"
+    assert second_link["expected_prev_hash"] == selected_first.record_hash
+    assert second_link["link_intact"] is True

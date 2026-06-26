@@ -525,12 +525,22 @@ def _pending_escalation_count() -> int:
     )
 
 
-def _trace_link_for_control(control_id: str | None) -> str | None:
+def _trace_link_for_control(control_id: str | None, correlation_id: str | None) -> str | None:
     """Link a pending escalation to the existing T22 live-feed route for the
-    scenario whose control produced it (no separate tracing architecture)."""
+    scenario whose control produced it (no separate tracing architecture).
+
+    The correlation_id is carried as a query parameter so the trace view can
+    be extended later to resolve the actual stored evaluation; today the T22
+    route still replays the scenario rather than rendering the stored trace,
+    since EvidenceRecord does not persist PipelineTrace (out of T24 scope)."""
 
     scenario_number = _CONTROL_TO_SCENARIO_NUMBER.get(control_id)
-    return f"/events/{scenario_number}" if scenario_number is not None else None
+    if scenario_number is None:
+        return None
+    link = f"/events/{scenario_number}"
+    if correlation_id is not None:
+        link += f"?correlation_id={correlation_id}"
+    return link
 
 
 def _build_pending_rows(
@@ -550,7 +560,7 @@ def _build_pending_rows(
                 "summary": _action_summary(original.action) if original else "Action details unavailable.",
                 "original_record_hash": original.record_hash if original else None,
                 "created_at": original.created_at if original else item.created_at,
-                "trace_link": _trace_link_for_control(item.control_id),
+                "trace_link": _trace_link_for_control(item.control_id, item.correlation_id),
             }
         )
     return rows

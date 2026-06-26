@@ -35,12 +35,25 @@ DEFAULT_CONTROL_MODES: dict[str, EnforcementMode] = {
     "COMM-EMAIL-003": "shadow",
 }
 
+# T23 — every control defaults to enabled (matches existing pre-T23 behaviour,
+# where every control in opa/data/controls.json fired unconditionally).
+DEFAULT_CONTROL_ENABLED: dict[str, bool] = {control_id: True for control_id in DEFAULT_CONTROL_MODES}
+
+# T23 — the only runtime-editable control parameter (spec: FIN-PAY-002 amount
+# threshold). Default of 500 matches the pre-T23 hardcoded Rego value.
+FIN_PAY_002_DEFAULT_AMOUNT_THRESHOLD = 500
+DEFAULT_CONTROL_PARAMETERS: dict[str, dict[str, Any]] = {
+    "FIN-PAY-002": {"amount_threshold": FIN_PAY_002_DEFAULT_AMOUNT_THRESHOLD},
+}
+
 
 class RuntimeSettings(BaseModel):
     """Runtime-editable settings loaded before policy decisioning."""
 
     high_confidence_threshold: float = Field(ge=0.0, le=1.0)
     control_modes: dict[str, EnforcementMode]
+    control_enabled: dict[str, bool] = Field(default_factory=lambda: dict(DEFAULT_CONTROL_ENABLED))
+    parameters: dict[str, dict[str, Any]] = Field(default_factory=lambda: dict(DEFAULT_CONTROL_PARAMETERS))
 
     model_config = ConfigDict(frozen=True)
 
@@ -60,6 +73,8 @@ class RuntimeSettings(BaseModel):
         return {
             "high_confidence_threshold": self.high_confidence_threshold,
             "control_modes": dict(self.control_modes),
+            "control_enabled": dict(self.control_enabled),
+            "parameters": {control_id: dict(params) for control_id, params in self.parameters.items()},
         }
 
 
@@ -83,6 +98,8 @@ class SettingsStore:
             settings = RuntimeSettings(
                 high_confidence_threshold=DEFAULT_HIGH_CONFIDENCE_THRESHOLD,
                 control_modes=dict(DEFAULT_CONTROL_MODES),
+                control_enabled=dict(DEFAULT_CONTROL_ENABLED),
+                parameters={control_id: dict(params) for control_id, params in DEFAULT_CONTROL_PARAMETERS.items()},
             )
             self._insert_settings(settings)
         return settings
@@ -94,6 +111,43 @@ class SettingsStore:
         updated = RuntimeSettings(
             high_confidence_threshold=threshold,
             control_modes=dict(current.control_modes),
+            control_enabled=dict(current.control_enabled),
+            parameters={control_id: dict(params) for control_id, params in current.parameters.items()},
+        )
+        self._update_settings(updated)
+        return updated
+
+    def update_control_enabled(self, control_id: str, enabled: bool) -> RuntimeSettings:
+        """Persist one control's enabled/disabled flag and return the updated row.
+
+        This is read by OPA/Rego as ``input.config.control_enabled`` — Python
+        never filters a triggered control out of a decision after the fact.
+        """
+
+        current = self.read_settings()
+        control_enabled = dict(current.control_enabled)
+        control_enabled[control_id] = enabled
+        updated = RuntimeSettings(
+            high_confidence_threshold=current.high_confidence_threshold,
+            control_modes=dict(current.control_modes),
+            control_enabled=control_enabled,
+            parameters={control_id: dict(params) for control_id, params in current.parameters.items()},
+        )
+        self._update_settings(updated)
+        return updated
+
+    def update_control_parameter(self, control_id: str, parameter_name: str, value: Any) -> RuntimeSettings:
+        """Persist one runtime-editable control parameter (e.g. FIN-PAY-002's
+        ``amount_threshold``) and return the updated row."""
+
+        current = self.read_settings()
+        parameters = {cid: dict(params) for cid, params in current.parameters.items()}
+        parameters.setdefault(control_id, {})[parameter_name] = value
+        updated = RuntimeSettings(
+            high_confidence_threshold=current.high_confidence_threshold,
+            control_modes=dict(current.control_modes),
+            control_enabled=dict(current.control_enabled),
+            parameters=parameters,
         )
         self._update_settings(updated)
         return updated
@@ -107,6 +161,8 @@ class SettingsStore:
         updated = RuntimeSettings(
             high_confidence_threshold=current.high_confidence_threshold,
             control_modes=control_modes,
+            control_enabled=dict(current.control_enabled),
+            parameters={cid: dict(params) for cid, params in current.parameters.items()},
         )
         self._update_settings(updated)
         return updated
@@ -118,6 +174,8 @@ class SettingsStore:
         updated = RuntimeSettings(
             high_confidence_threshold=current.high_confidence_threshold,
             control_modes=dict(control_modes),
+            control_enabled=dict(current.control_enabled),
+            parameters={cid: dict(params) for cid, params in current.parameters.items()},
         )
         self._update_settings(updated)
         return updated
@@ -151,6 +209,8 @@ class SettingsStore:
                     )
                     """
                 )
+                self._add_column_if_missing_sqlite(connection, "control_enabled", "TEXT")
+                self._add_column_if_missing_sqlite(connection, "parameters", "TEXT")
             return
 
         with self._postgres_connection() as connection:
@@ -165,43 +225,73 @@ class SettingsStore:
                     )
                     """
                 )
+                cursor.execute("ALTER TABLE runtime_settings ADD COLUMN IF NOT EXISTS control_enabled jsonb")
+                cursor.execute("ALTER TABLE runtime_settings ADD COLUMN IF NOT EXISTS parameters jsonb")
+
+    @staticmethod
+    def _add_column_if_missing_sqlite(connection: sqlite3.Connection, column: str, column_type: str) -> None:
+        existing = {row[1] for row in connection.execute("PRAGMA table_info(runtime_settings)").fetchall()}
+        if column not in existing:
+            connection.execute(f"ALTER TABLE runtime_settings ADD COLUMN {column} {column_type}")
 
     def _fetch_settings(self) -> RuntimeSettings | None:
         if self._uses_sqlite:
             with self._sqlite_connection() as connection:
                 row = connection.execute(
-                    "SELECT high_confidence_threshold, control_modes FROM runtime_settings WHERE id = ?",
+                    "SELECT high_confidence_threshold, control_modes, control_enabled, parameters FROM runtime_settings WHERE id = ?",
                     (SETTINGS_ROW_ID,),
                 ).fetchone()
                 if row is None:
                     return None
-                return RuntimeSettings(high_confidence_threshold=row[0], control_modes=json.loads(row[1]))
+                return RuntimeSettings(
+                    high_confidence_threshold=row[0],
+                    control_modes=json.loads(row[1]),
+                    control_enabled=json.loads(row[2]) if row[2] else dict(DEFAULT_CONTROL_ENABLED),
+                    parameters=json.loads(row[3]) if row[3] else dict(DEFAULT_CONTROL_PARAMETERS),
+                )
 
         with self._postgres_connection() as connection:
             with connection.cursor() as cursor:
                 cursor.execute(
-                    "SELECT high_confidence_threshold, control_modes FROM runtime_settings WHERE id = %s",
+                    "SELECT high_confidence_threshold, control_modes, control_enabled, parameters FROM runtime_settings WHERE id = %s",
                     (SETTINGS_ROW_ID,),
                 )
                 row = cursor.fetchone()
                 if row is None:
                     return None
-                return RuntimeSettings(high_confidence_threshold=row[0], control_modes=row[1])
+                return RuntimeSettings(
+                    high_confidence_threshold=row[0],
+                    control_modes=row[1],
+                    control_enabled=row[2] if row[2] else dict(DEFAULT_CONTROL_ENABLED),
+                    parameters=row[3] if row[3] else dict(DEFAULT_CONTROL_PARAMETERS),
+                )
 
     def _insert_settings(self, settings: RuntimeSettings) -> None:
         if self._uses_sqlite:
             with self._sqlite_connection() as connection:
                 connection.execute(
-                    "INSERT INTO runtime_settings (id, high_confidence_threshold, control_modes) VALUES (?, ?, ?)",
-                    (SETTINGS_ROW_ID, settings.high_confidence_threshold, json.dumps(settings.control_modes, sort_keys=True)),
+                    "INSERT INTO runtime_settings (id, high_confidence_threshold, control_modes, control_enabled, parameters) VALUES (?, ?, ?, ?, ?)",
+                    (
+                        SETTINGS_ROW_ID,
+                        settings.high_confidence_threshold,
+                        json.dumps(settings.control_modes, sort_keys=True),
+                        json.dumps(settings.control_enabled, sort_keys=True),
+                        json.dumps(settings.parameters, sort_keys=True),
+                    ),
                 )
             return
 
         with self._postgres_connection() as connection:
             with connection.cursor() as cursor:
                 cursor.execute(
-                    "INSERT INTO runtime_settings (id, high_confidence_threshold, control_modes) VALUES (%s, %s, %s)",
-                    (SETTINGS_ROW_ID, settings.high_confidence_threshold, Jsonb(settings.control_modes)),
+                    "INSERT INTO runtime_settings (id, high_confidence_threshold, control_modes, control_enabled, parameters) VALUES (%s, %s, %s, %s, %s)",
+                    (
+                        SETTINGS_ROW_ID,
+                        settings.high_confidence_threshold,
+                        Jsonb(settings.control_modes),
+                        Jsonb(settings.control_enabled),
+                        Jsonb(settings.parameters),
+                    ),
                 )
 
     def _update_settings(self, settings: RuntimeSettings) -> None:
@@ -210,10 +300,16 @@ class SettingsStore:
                 connection.execute(
                     """
                     UPDATE runtime_settings
-                    SET high_confidence_threshold = ?, control_modes = ?, updated_at = CURRENT_TIMESTAMP
+                    SET high_confidence_threshold = ?, control_modes = ?, control_enabled = ?, parameters = ?, updated_at = CURRENT_TIMESTAMP
                     WHERE id = ?
                     """,
-                    (settings.high_confidence_threshold, json.dumps(settings.control_modes, sort_keys=True), SETTINGS_ROW_ID),
+                    (
+                        settings.high_confidence_threshold,
+                        json.dumps(settings.control_modes, sort_keys=True),
+                        json.dumps(settings.control_enabled, sort_keys=True),
+                        json.dumps(settings.parameters, sort_keys=True),
+                        SETTINGS_ROW_ID,
+                    ),
                 )
             return
 
@@ -222,10 +318,16 @@ class SettingsStore:
                 cursor.execute(
                     """
                     UPDATE runtime_settings
-                    SET high_confidence_threshold = %s, control_modes = %s, updated_at = now()
+                    SET high_confidence_threshold = %s, control_modes = %s, control_enabled = %s, parameters = %s, updated_at = now()
                     WHERE id = %s
                     """,
-                    (settings.high_confidence_threshold, Jsonb(settings.control_modes), SETTINGS_ROW_ID),
+                    (
+                        settings.high_confidence_threshold,
+                        Jsonb(settings.control_modes),
+                        Jsonb(settings.control_enabled),
+                        Jsonb(settings.parameters),
+                        SETTINGS_ROW_ID,
+                    ),
                 )
 
     def _sqlite_connection(self) -> sqlite3.Connection:

@@ -16,9 +16,13 @@
 </section>
 
 {% if saved == "threshold" %}
-<div class="banner banner-success">Confidence threshold saved. It applies to every run from now on.</div>
+<div class="banner banner-success">Confidence threshold saved. It takes effect on the next evaluation — no restart needed.</div>
 {% elif saved == "mode" %}
-<div class="banner banner-success">Control mode saved. It applies to every run from now on.</div>
+<div class="banner banner-success">Control mode saved. It takes effect on the next evaluation — no restart needed.</div>
+{% elif saved == "enabled" %}
+<div class="banner banner-success">Control status saved. It takes effect on the next evaluation — no restart needed.</div>
+{% elif saved == "parameter" %}
+<div class="banner banner-success">Control parameter saved. It takes effect on the next evaluation — no restart needed.</div>
 {% elif error %}
 <div class="banner banner-error">{{ error }}</div>
 {% endif %}
@@ -97,11 +101,12 @@
 </section>
 
 <section id="control-modes" class="card">
-  <h2>Per-control enforcement mode</h2>
+  <h2>Controls — enable, mode, and parameters</h2>
   <p>
-    <strong style="color: var(--text);">Shadow</strong> evaluates and records but always executes;
-    <strong style="color: var(--text);">soft</strong> enforces an allow-listed subset; <strong style="color: var(--text);">full</strong>
-    enforces every control. Each control here can be set independently.
+    Risk owns these, not engineering. Each control can be switched off entirely, have its
+    enforcement mode set independently, and — for FIN-PAY-002 — have its payment amount
+    threshold edited inline. Changes take effect on the very next policy evaluation; no
+    restart, no deployment, no code change.
   </p>
   <div class="table-shell" style="margin-top: 1rem; box-shadow: none; border: none;">
     <div class="table-scroll">
@@ -110,7 +115,9 @@
           <tr>
             <th>Control</th>
             <th>Purpose</th>
+            <th>Enabled</th>
             <th>Mode</th>
+            <th>Parameter</th>
           </tr>
         </thead>
         <tbody>
@@ -118,6 +125,15 @@
           <tr>
             <td class="mono">{{ row.id }}</td>
             <td>{{ row.description }}</td>
+            <td>
+              <form method="post" action="/settings/control-enabled" class="field-inline" style="gap: 0.5rem;">
+                <input type="hidden" name="control_id" value="{{ row.id }}">
+                <input type="hidden" name="enabled" value="{{ "false" if row.enabled else "true" }}">
+                <button type="submit" class="btn btn-sm {{ "btn-primary" if row.enabled else "btn-ghost" }}">
+                  {{ "Enabled" if row.enabled else "Disabled" }}
+                </button>
+              </form>
+            </td>
             <td>
               <form method="post" action="/settings/control-mode" class="field-inline" style="gap: 0.5rem;">
                 <input type="hidden" name="control_id" value="{{ row.id }}">
@@ -128,6 +144,27 @@
                 </select>
                 <button type="submit" class="btn btn-sm btn-primary">Save</button>
               </form>
+            </td>
+            <td>
+              {% if row.id == "FIN-PAY-002" %}
+              <form method="post" action="/settings/control-parameter" class="field-inline" style="gap: 0.5rem;">
+                <input type="hidden" name="control_id" value="{{ row.id }}">
+                <label class="field-label" for="amount-threshold-input" style="margin: 0;">Amount threshold (&pound;)</label>
+                <input
+                  id="amount-threshold-input"
+                  type="number"
+                  name="amount_threshold"
+                  step="1"
+                  min="0"
+                  value="{{ row.amount_threshold }}"
+                  class="input-sm"
+                  required
+                >
+                <button type="submit" class="btn btn-sm btn-primary">Save</button>
+              </form>
+              {% else %}
+              <span class="card-note">&mdash;</span>
+              {% endif %}
             </td>
           </tr>
           {% endfor %}

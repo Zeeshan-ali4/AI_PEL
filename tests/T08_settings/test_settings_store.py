@@ -81,14 +81,17 @@ def test_settings_payload_ready_for_future_policy_config(tmp_path):
     store.update_threshold(0.60)
     store.update_control_mode("COMM-EMAIL-002", "soft")
 
-    payload = store.read_settings().to_policy_config()
+    settings = store.read_settings()
+    payload = settings.to_policy_config()
 
     assert payload == {
         "high_confidence_threshold": 0.60,
         "control_modes": {
-            **store.read_settings().control_modes,
+            **settings.control_modes,
             "COMM-EMAIL-002": "soft",
         },
+        "control_enabled": settings.control_enabled,
+        "parameters": settings.parameters,
     }
     forbidden_policy_decision_fields = {"decision", "allow", "block", "escalate", "threshold_used"}
     assert forbidden_policy_decision_fields.isdisjoint(payload)

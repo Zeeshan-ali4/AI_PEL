@@ -12,7 +12,7 @@ fail_closed_mappings := [
 threshold := object.get(input.config, "high_confidence_threshold", 0.75)
 
 control_enabled(id) if {
-  data.controls[id].enabled == true
+  object.get(object.get(input.config, "control_enabled", {}), id, true) == true
   not data.controls[id].proposed == true
 }
 

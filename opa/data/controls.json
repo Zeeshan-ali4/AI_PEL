@@ -24,7 +24,10 @@
         "Thematic: human decision over automated output"
       ],
       "required_approval_role": "finance_supervisor",
-      "enabled": true
+      "enabled": true,
+      "parameters": {
+        "amount_threshold": 500
+      }
     },
     "FIN-PAY-003": {
       "id": "FIN-PAY-003",

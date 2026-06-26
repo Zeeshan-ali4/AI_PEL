@@ -354,7 +354,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **Estimate:** 0.5–1 day. This is template and route work on existing infrastructure.
 
 ## T25 — Audit security demonstration (extends T17/T18)
-- **Status:** To do
+- **Status:** Done
 - **Goal:** Make the audit security story visually explicit for a non-technical reviewer. Two additions: (1) a visual hash chain view in the audit log showing each record's hash and its link to the previous record's hash, making the chain structure obvious; (2) an enhanced "Export audit package" function that bundles all records for a given `correlation_id` (or a date range) into a single JSON file with a package-level integrity hash, so the buyer can see that evidence can be extracted for external review in a tamper-evident format.
 - **Depends on:** T17, T18
 - **Spec refs:** §5.5, §8A items 5–6 (extended)

@@ -21,6 +21,7 @@
   <div class="form-row">
     <a href="/records/{{ record.record_hash }}/export.json" class="btn btn-sm">Export for audit (JSON)</a>
     <a href="/records/{{ record.record_hash }}/export.html" class="btn btn-sm">Export for audit (printable HTML)</a>
+    <a href="{{ package_export_url }}" class="btn btn-sm">Download audit package for this case</a>
   </div>
   {% endif %}
 </section>
@@ -193,7 +194,8 @@
 
 <section class="card">
   <h2>Hash chain</h2>
-  <p>This record's tamper-evident position in the append-only audit chain.</p>
+  <p>This record's tamper-evident position in the append-only audit chain. Use the audit package export to share this record with adjacent chain hashes and a package-level SHA-256 integrity check.</p>
+  <p class="eyebrow" style="margin-top: 0.5rem;">Demo integrity check only — production would use signed attestation.</p>
   <dl class="dl-grid single-col" style="margin-top: 0.875rem;">
     <div>
       <dt>record_hash</dt>

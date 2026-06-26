@@ -40,9 +40,13 @@
     Recomputes every record's hash and prev-hash linkage from scratch and reports
     whether the stored chain still matches.
   </p>
-  <form method="post" action="/audit/verify" style="margin-top: 0.875rem;">
-    <button type="submit" class="btn btn-primary">Verify chain</button>
-  </form>
+  <div class="form-row" style="margin-top: 0.875rem;">
+    <form method="post" action="/audit/verify">
+      <button type="submit" class="btn btn-primary">Verify chain</button>
+    </form>
+    <a href="/audit/export.json" class="btn">Download audit package</a>
+  </div>
+  <p class="eyebrow" style="margin-top: 0.75rem;">Demo integrity check only — production would use signed attestation.</p>
 </section>
 
 <section class="card panel-danger">
@@ -95,6 +99,7 @@
             <th>Correlation ID</th>
             <th>Decision</th>
             <th>Executed</th>
+            <th>Chain link</th>
             <th>record_hash</th>
             <th>prev_hash</th>
             <th>Record</th>
@@ -109,6 +114,13 @@
             <td class="mono">{{ row.correlation_id }}</td>
             <td>{{ row.decision }}</td>
             <td>{{ row.executed }}</td>
+            {% if broken_record_id == row.id %}
+            <td><span class="decision-badge decision-block">Broken link</span><br><span class="eyebrow">{{ broken_reason }}</span><br><span class="mono" title="{{ row.expected_prev_hash }}">expected {{ row.expected_prev_hash[:12] }}&hellip;</span><br><span class="mono" title="{{ row.prev_hash }}">found {{ row.prev_hash[:12] }}&hellip;</span></td>
+            {% elif row.link_intact %}
+            <td><span class="decision-badge decision-allow">Green link</span><br><span class="eyebrow">prev matches {{ "genesis" if not row.previous_record_id else "record " ~ row.previous_record_id }}</span></td>
+            {% else %}
+            <td><span class="decision-badge decision-block">Broken link</span><br><span class="mono" title="{{ row.expected_prev_hash }}">expected {{ row.expected_prev_hash[:12] }}&hellip;</span><br><span class="mono" title="{{ row.prev_hash }}">found {{ row.prev_hash[:12] }}&hellip;</span></td>
+            {% endif %}
             <td class="mono" title="{{ row.record_hash }}">{{ row.record_hash[:12] }}&hellip;</td>
             <td class="mono" title="{{ row.prev_hash }}">{{ row.prev_hash[:12] }}&hellip;</td>
             <td>

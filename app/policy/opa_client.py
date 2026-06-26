@@ -13,7 +13,9 @@ OPA input contract (stable — T10+ depends on this shape):
             "evidence": { ... Evidence.model_dump(mode="json") ... },
             "config": {
                 "high_confidence_threshold": <float>,
-                "control_modes": { "<control_id>": "<mode>", ... }
+                "control_modes": { "<control_id>": "<mode>", ... },
+                "control_enabled": { "<control_id>": <bool>, ... },   # T23
+                "parameters": { "<control_id>": { "<param>": <value> }, ... }  # T23
             }
         }
     }

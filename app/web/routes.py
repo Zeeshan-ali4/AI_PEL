@@ -781,7 +781,7 @@ DEFAULT_PREVIEW_THRESHOLD = 0.60
 IMPACT_SCENARIO_ID = 5
 
 
-def _scenario_5_decision_preview(threshold: float, control_modes: dict[str, str]) -> Decision:
+def _scenario_5_decision_preview(threshold: float, config: dict[str, Any]) -> Decision:
     """Recompute Scenario 5's binding decision at a hypothetical threshold.
 
     Reuses the real normaliser/context-resolver/evidence-builder/OPA path so the
@@ -795,15 +795,16 @@ def _scenario_5_decision_preview(threshold: float, control_modes: dict[str, str]
     action = normalise(intercepted_call)
     context = context_resolver.resolve(action)
     evidence = evidence_builder.build_evidence(action)
-    config = {"high_confidence_threshold": threshold, "control_modes": dict(control_modes)}
-    return opa_client.decide(action, context, evidence, config, opa_url=pipeline.opa_url)
+    preview_config = dict(config)
+    preview_config["high_confidence_threshold"] = threshold
+    return opa_client.decide(action, context, evidence, preview_config, opa_url=pipeline.opa_url)
 
 
-def _build_impact_panel(threshold: float, preview_threshold: float, control_modes: dict[str, str]) -> dict[str, Any]:
+def _build_impact_panel(threshold: float, preview_threshold: float, config: dict[str, Any]) -> dict[str, Any]:
     """Build the live Scenario 5 impact panel comparing the current vs. a preview threshold."""
 
-    current_decision = _scenario_5_decision_preview(threshold, control_modes)
-    preview_decision = _scenario_5_decision_preview(preview_threshold, control_modes)
+    current_decision = _scenario_5_decision_preview(threshold, config)
+    preview_decision = _scenario_5_decision_preview(preview_threshold, config)
     return {
         "stub_confidence": SCENARIO_5_CONFIDENCE,
         "current_threshold": threshold,
@@ -836,6 +837,10 @@ def settings_page(
             "id": control_id,
             "description": control["description"],
             "mode": settings.control_modes.get(control_id, "shadow"),
+            "enabled": settings.control_enabled.get(control_id, True),
+            "amount_threshold": settings.parameters.get("FIN-PAY-002", {}).get("amount_threshold")
+            if control_id == "FIN-PAY-002"
+            else None,
         }
         for control_id, control in sorted(controls.items())
     ]
@@ -848,7 +853,7 @@ def settings_page(
             "control_rows": control_rows,
             "valid_modes": sorted(VALID_ENFORCEMENT_MODES),
             "preview_threshold": chosen_preview,
-            "impact": _build_impact_panel(settings.high_confidence_threshold, chosen_preview, settings.control_modes),
+            "impact": _build_impact_panel(settings.high_confidence_threshold, chosen_preview, settings.to_policy_config()),
             "saved": saved,
             "error": error,
         },
@@ -883,3 +888,36 @@ def update_control_mode(control_id: str = Form(...), mode: str = Form(...)) -> R
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Unknown control: {control_id!r}")
     pipeline.settings_store.update_control_mode(control_id, mode)
     return RedirectResponse(url="/settings?saved=mode", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/settings/control-enabled")
+def update_control_enabled(control_id: str = Form(...), enabled: str = Form(...)) -> RedirectResponse:
+    """Persist a control's enabled/disabled flag (spec T23). Disabled controls are
+    skipped inside Rego via ``control_enabled()`` — Python never post-filters a
+    decision OPA has already returned."""
+
+    pipeline = get_pipeline()
+    controls = _load_enabled_controls()
+    if control_id not in controls:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Unknown control: {control_id!r}")
+    pipeline.settings_store.update_control_enabled(control_id, enabled == "true")
+    return RedirectResponse(url="/settings?saved=enabled", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/settings/control-parameter")
+def update_control_parameter(control_id: str = Form(...), amount_threshold: float = Form(...)) -> RedirectResponse:
+    """Persist FIN-PAY-002's runtime-editable payment amount threshold (spec T23).
+
+    This is the only control with an editable business parameter in this task;
+    Rego reads it from ``input.config.parameters["FIN-PAY-002"].amount_threshold``.
+    """
+
+    if control_id != "FIN-PAY-002":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only FIN-PAY-002 has an editable amount threshold.")
+    if amount_threshold < 0:
+        return RedirectResponse(
+            url="/settings?error=Amount+threshold+must+be+zero+or+greater.",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+    get_pipeline().settings_store.update_control_parameter(control_id, "amount_threshold", amount_threshold)
+    return RedirectResponse(url="/settings?saved=parameter", status_code=status.HTTP_303_SEE_OTHER)

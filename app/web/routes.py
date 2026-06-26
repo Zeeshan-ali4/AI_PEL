@@ -68,6 +68,9 @@ AGENT_STEPS_PER_RUN = 14
 # T15 only needs the escalation routing to point somewhere stable.
 APPROVAL_QUEUE_PATH = "/approvals"
 
+# Shared template for the T22 live event feed and stored trace page.
+EVENT_FEED_TEMPLATE = "event_feed.html"
+
 # Stable demo default used when an approver identity is not supplied on the
 # approval form (spec §8A item 4 only requires the identity be populated).
 DEFAULT_HUMAN_APPROVER = "demo.named.approver@internal.example"
@@ -274,7 +277,7 @@ def event_feed_index(request: Request) -> HTMLResponse:
 
     return templates.TemplateResponse(
         request,
-        "event_feed.html",
+        EVENT_FEED_TEMPLATE,
         {"cards": _event_feed_cards(), "scenario_id": None, "scenario_title": None},
     )
 
@@ -340,7 +343,7 @@ def event_feed_for_scenario(request: Request, scenario_id: int, correlation_id: 
             )
         return templates.TemplateResponse(
             request,
-            "event_feed.html",
+            EVENT_FEED_TEMPLATE,
             {
                 "cards": _event_feed_cards(),
                 "scenario_id": None,
@@ -351,7 +354,7 @@ def event_feed_for_scenario(request: Request, scenario_id: int, correlation_id: 
 
     return templates.TemplateResponse(
         request,
-        "event_feed.html",
+        EVENT_FEED_TEMPLATE,
         {
             "cards": _event_feed_cards(),
             "scenario_id": scenario_id,

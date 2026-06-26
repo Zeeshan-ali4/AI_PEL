@@ -786,6 +786,7 @@ def _record_view_context(record: EvidenceRecord, records: list[EvidenceRecord]) 
         "control_id": decision.control_id,
         "framework_mappings": decision.framework_mappings,
         "referenced": referenced,
+        "package_export_url": f"/audit/export.json?correlation_id={record.correlation_id}",
     }
 
 
@@ -823,21 +824,31 @@ def record_export_html(request: Request, record_hash: str) -> HTMLResponse:
 
 
 def _build_audit_rows(records: list[EvidenceRecord]) -> list[dict[str, Any]]:
-    """Chronological, assurance-readable rows for the T18 audit log (spec §8A item 6)."""
+    """Chronological, assurance-readable rows for the T18/T25 audit log."""
 
-    return [
-        {
-            "id": record.id,
-            "created_at": record.created_at,
-            "record_type": record.record_type.value,
-            "correlation_id": str(record.correlation_id),
-            "decision": record.decision.decision.value,
-            "executed": record.executed,
-            "record_hash": record.record_hash,
-            "prev_hash": record.prev_hash,
-        }
-        for record in records
-    ]
+    rows = []
+    expected_prev_hash = "0" * 64
+    previous_record_id: int | None = None
+    for record in records:
+        link_intact = record.prev_hash == expected_prev_hash
+        rows.append(
+            {
+                "id": record.id,
+                "created_at": record.created_at,
+                "record_type": record.record_type.value,
+                "correlation_id": str(record.correlation_id),
+                "decision": record.decision.decision.value,
+                "executed": record.executed,
+                "record_hash": record.record_hash,
+                "prev_hash": record.prev_hash,
+                "expected_prev_hash": expected_prev_hash,
+                "previous_record_id": previous_record_id,
+                "link_intact": link_intact,
+            }
+        )
+        expected_prev_hash = record.record_hash
+        previous_record_id = record.id
+    return rows
 
 
 @router.get("/audit", response_class=HTMLResponse)
@@ -865,6 +876,18 @@ def audit_log_page(
             "broken_reason": broken_reason,
             "tampered": tampered,
         },
+    )
+
+
+@router.get("/audit/export.json")
+def audit_package_export(correlation_id: str | None = None) -> JSONResponse:
+    """Download a demo-grade tamper-evident audit package for all or one correlation id."""
+
+    package = get_pipeline().audit_store.export_audit_package(correlation_id=correlation_id)
+    suffix = f"-{correlation_id}" if correlation_id else "-all-records"
+    return JSONResponse(
+        content=package,
+        headers={"Content-Disposition": f'attachment; filename="audit-package{suffix}.json"'},
     )
 
 

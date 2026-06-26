@@ -30,7 +30,13 @@
           <a href="/" class="nav-link {{ 'nav-link-active' if active_nav == 'dashboard' else '' }}">Control Dashboard</a>
           <a href="/scenarios" class="nav-link {{ 'nav-link-active' if active_nav == 'scenarios' else '' }}">Scenarios</a>
           <a href="/events" class="nav-link {{ 'nav-link-active' if active_nav == 'events' else '' }}">Live Feed</a>
-          <a href="/approvals" class="nav-link {{ 'nav-link-active' if active_nav == 'approvals' else '' }}">Approvals</a>
+          <a href="/approvals" class="nav-link {{ 'nav-link-active' if active_nav == 'approvals' else '' }}">
+            Approvals
+            {% set pending_count = pending_escalation_count() %}
+            {% if pending_count > 0 %}
+            <span class="badge badge-danger" aria-label="{{ pending_count }} escalations awaiting a human decision">{{ pending_count }}</span>
+            {% endif %}
+          </a>
           <a href="/audit" class="nav-link {{ 'nav-link-active' if active_nav == 'audit' else '' }}">Audit Log &amp; Integrity</a>
           <a href="/settings" class="nav-link {{ 'nav-link-active' if active_nav == 'settings' else '' }}">Settings</a>
         </nav>

@@ -6,6 +6,12 @@ Opening narration: "This demonstration is about human oversight and contestabili
 
 Also say early: "Some components are real because assurance depends on them: Presidio detection is real, OPA/Rego policy decisioning is real, and the Postgres-backed SHA-256 hash chain is real. Other parts are deliberately demo-only and visibly labelled: MCP interception is represented by an SDK wrapper, enterprise connectors are context fixtures, the nuance/model layer is a deterministic stub, auth/multi-tenancy/production scale are out of scope, framework mappings/control packs are illustrative, and the one-shot policy engine failure control is a labelled simulation for the fail-safe moment."
 
+## Beat 0 — Evidence gap framing
+
+Open `http://localhost:8080/evidence-gap`. "Before we look at the system, it is worth being explicit about the evidence problem it solves." Walk the paired contrast: without a policy enforcement layer, assurance is reconstructed from logs after the fact; with AI PEL, the gate captures structured action, context, bounded evidence, binding decision fields, control mappings, and hash-chain custody at decision time.
+
+Narration: "This page is not the demo evidence itself; it frames why the next screens matter. Now let's see what evidence looks like when it is structural rather than reconstructed." Move from the contrast page into the control dashboard.
+
 ## Beat 1 — Dashboard calm
 
 Open `http://localhost:8080/`. "This is what your AI operations look like when the control plane is running." Show total evaluations, decision breakdown for allowed, escalated, blocked, and logged outcomes, and the action-type breakdown between payment and email. Point to the controls, modes, and framework chips.

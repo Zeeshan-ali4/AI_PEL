@@ -460,7 +460,7 @@ This phase exists for one reason: a Head of Risk and Assurance does not just wan
 - **Estimate:** 0.5–1 day.
 
 ## T29 — Evidence schema versioning + regulatory export framing
-- **Status:** To do
+- **Status:** Done
 - **Goal:** Add a single `evidence_schema_version` field to `EvidenceRecord`, populated on every write, surfaced on the record view and in audit exports — so the buyer sees that the *definition* of sufficient evidence is itself versioned and governed, not informal. Pair this with narration-only updates to the existing audit package export (T25) and `DEMO_SCRIPT.md` Beat 9, reframing the already-built "Download audit package" feature explicitly as a regulatory-reporting artefact, with no functional change to the export itself.
 - **Depends on:** T02, T25
 - **Spec refs:** §5 (schema) — **note Golden rule 6: this is a schema change, so `MASTER_SPEC.md` §5 must be updated first**, with a version bump noted at the top of the spec, before implementation.

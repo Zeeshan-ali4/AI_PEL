@@ -157,6 +157,28 @@
 
 {% include "_regulator_questions.html" %}
 
+<section class="card panel-info" aria-labelledby="sufficiency-checklist-heading">
+  <p class="eyebrow">Illustrative sufficiency check, not a compliance certification.</p>
+  <h2 id="sufficiency-checklist-heading" style="color: var(--blue);">Evidence sufficiency checklist</h2>
+  <p>
+    A field-backed demo checklist showing whether this record contains the core evidence a risk reviewer
+    would expect for the assurance story. It reads only this record and any linked approval decision; it
+    is not a legal or regulatory certification.
+  </p>
+  <div style="margin-top: 0.875rem; display: grid; gap: 0.75rem;">
+    {% for item in sufficiency_items %}
+    <div class="card" style="margin: 0; padding: 0.875rem; border-color: {% if item.status == 'met' %}rgba(22, 163, 74, 0.35){% elif item.status == 'not-applicable' %}rgba(100, 116, 139, 0.35){% elif item.status == 'pending' %}rgba(217, 119, 6, 0.35){% else %}rgba(220, 38, 38, 0.35){% endif %};">
+      <div style="display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start;">
+        <h3 style="margin: 0; font-size: 1rem;">{{ item.label }}</h3>
+        <span class="badge" data-sufficiency-key="{{ item.key }}" data-sufficiency-status="{{ item.status }}">{{ item.status }}</span>
+      </div>
+      <p style="margin-top: 0.4rem; color: var(--text-soft);">{{ item.evidence }}</p>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+
 <section class="card">
   <h2>Binding decision</h2>
   <dl class="dl-grid" style="margin-top: 0.875rem;">

@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% set active_nav = "evidence_gap" %}
+{% block title %}Evidence gap contrast — AI PEL Assurance Gate{% endblock %}
+
+{% block content %}
+<section class="page-heading" aria-labelledby="evidence-gap-title">
+  <span class="section-label">Beat 0 framing</span>
+  <h1 id="evidence-gap-title">The evidence gap AI PEL closes</h1>
+  <p>
+    Before running a scenario, this page makes the assurance problem explicit: without a deterministic
+    policy enforcement layer, evidence is often reconstructed after the action. With AI PEL, evidence is
+    captured at the gate, before execution, using fields and pages already visible in this demo.
+  </p>
+</section>
+
+<section class="panel" aria-labelledby="contrast-title">
+  <div class="panel-heading">
+    <span class="section-label">Without / with contrast</span>
+    <h2 id="contrast-title">What Risk can prove at decision time</h2>
+    <p>Each paired point links the assurance concern to concrete demo surfaces or record fields.</p>
+  </div>
+
+  <div class="scenario-grid" aria-label="Evidence gap contrast pairs">
+    <article class="scenario-card" data-testid="evidence-gap-pair">
+      <div data-testid="without-ai-pel">
+        <span class="section-label">Without a policy enforcement layer</span>
+        <h3>Post-hoc-only visibility</h3>
+        <p>You usually know what happened only after the agent has acted, by reading tool logs or transcripts.</p>
+      </div>
+      <div data-testid="with-ai-pel">
+        <span class="section-label">With AI PEL</span>
+        <p>The <a href="/scenarios" data-testid="live-product-link">scenario runner</a> shows actions intercepted before execution and evaluated through the gate.</p>
+      </div>
+    </article>
+
+    <article class="scenario-card" data-testid="evidence-gap-pair">
+      <div data-testid="without-ai-pel">
+        <span class="section-label">Without a policy enforcement layer</span>
+        <h3>Implicit decision semantics</h3>
+        <p>What counts as a decision is buried in free text, agent state, or application-specific status codes.</p>
+      </div>
+      <div data-testid="with-ai-pel">
+        <span class="section-label">With AI PEL</span>
+        <p>Decision records expose standard fields such as <code>decision.decision</code>, <code>decision.reason</code>, <code>control_id</code>, and <code>threshold_used</code>.</p>
+      </div>
+    </article>
+
+    <article class="scenario-card" data-testid="evidence-gap-pair">
+      <div data-testid="without-ai-pel">
+        <span class="section-label">Without a policy enforcement layer</span>
+        <h3>Context reconstructed later</h3>
+        <p>Rebuilding the facts means querying several systems later and hoping account status, approvals, and recipient data have not changed.</p>
+      </div>
+      <div data-testid="with-ai-pel">
+        <span class="section-label">With AI PEL</span>
+        <p>Every evaluation stores the <code>context</code> used at decision time alongside bounded <code>evidence</code>; payment paths deliberately skip semantics where it is not needed.</p>
+      </div>
+    </article>
+
+    <article class="scenario-card" data-testid="evidence-gap-pair">
+      <div data-testid="without-ai-pel">
+        <span class="section-label">Without a policy enforcement layer</span>
+        <h3>No chain of custody</h3>
+        <p>Logs may exist, but they do not prove whether a historical record has been changed since the action was evaluated.</p>
+      </div>
+      <div data-testid="with-ai-pel">
+        <span class="section-label">With AI PEL</span>
+        <p>The <a href="/audit">audit log</a> records <code>record_hash</code> and <code>prev_hash</code>, then exposes audit-chain verification and a labelled tamper demonstration.</p>
+      </div>
+    </article>
+
+    <article class="scenario-card" data-testid="evidence-gap-pair">
+      <div data-testid="without-ai-pel">
+        <span class="section-label">Without a policy enforcement layer</span>
+        <h3>Control traceability is unclear</h3>
+        <p>A reviewer must infer which policy or framework obligation applied to the action.</p>
+      </div>
+      <div data-testid="with-ai-pel">
+        <span class="section-label">With AI PEL</span>
+        <p>Decision views and records show <code>triggered_controls</code> and <code>framework_mappings</code> for the control that fired.</p>
+      </div>
+    </article>
+
+    <article class="scenario-card" data-testid="evidence-gap-pair">
+      <div data-testid="without-ai-pel">
+        <span class="section-label">Without a policy enforcement layer</span>
+        <h3>Human oversight evidence is thin</h3>
+        <p>Approval can be separated from the original action, making accountability hard to evidence.</p>
+      </div>
+      <div data-testid="with-ai-pel">
+        <span class="section-label">With AI PEL</span>
+        <p>The approvals queue routes escalations to a named role, and approval decisions append linked <code>approval_decision</code> records rather than mutating the original evaluation.</p>
+      </div>
+    </article>
+  </div>
+</section>
+{% endblock %}

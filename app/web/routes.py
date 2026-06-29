@@ -173,6 +173,13 @@ def _build_control_rows(
     return rows, gated_total, decision_breakdown, action_type_breakdown
 
 
+@router.get("/evidence-gap", response_class=HTMLResponse)
+def evidence_gap_page(request: Request) -> HTMLResponse:
+    """Render the T27 static before/after evidence-gap contrast page."""
+
+    return templates.TemplateResponse(request, "evidence_gap.html", {})
+
+
 @router.get("/", response_class=HTMLResponse)
 def dashboard(request: Request) -> HTMLResponse:
     """Render the board-ready landing control dashboard (spec §8A item 1, §9)."""

@@ -1,13 +1,17 @@
 # Master Spec — Runtime Policy Enforcement Gate for AI Agent Actions (Demo Build)
 
-**Status:** v1.1 — source of truth for the demo. Supersedes v1.0.
+**Status:** v1.2 — source of truth for the demo. Supersedes v1.1.
 **Audience for the demo artifact:** the **Head of Risk and Assurance**. The build is optimised to *demonstrate assurance* — visible human oversight, reliable evidence, and provable control operation — not engineering depth. Parts that are easy to fake (PII detection, the policy engine, the audit chain) are built for real, because faking them undermines the exact assurance claims the product makes.
 
 Both Claude Code (architect/reviewer) and Codex (implementer) consume this document. Do not deviate from the schemas, file layout, or control logic here without updating this file first.
 
 ---
 
-## 0. Changes in v1.1 (read first if you saw v1.0)
+## 0. Changes in v1.2 (read first if you saw v1.1)
+
+- **T29:** Added `evidence_schema_version: str` field to `EvidenceRecord` (§5.5). This field is populated on every new audit record write using a module-level constant (`EVIDENCE_SCHEMA_VERSION = "1.0.0"`), surfaced on the record view and in audit package exports, and framed in `DEMO_SCRIPT.md` Beat 9 as a regulatory-reporting governance marker. No other schemas or policy logic are affected.
+
+## 0a. Changes in v1.1 (read first if you saw v1.0)
 
 - Audience set to Head of Risk & Assurance; value framing rewritten around **assurance** (§1, §1A).
 - **Decision precedence changed**: `block` is now reserved for a *clearly-prohibited / malicious* tier only. All other risk **escalates to a human**. (§6)
@@ -178,7 +182,8 @@ Semantic layer runs **only** for action types whose policy needs meaning from un
   "record_type": "action_evaluation | approval_decision",
   "references_hash": "sha256 hex | null   ← approval_decision rows reference the original action_evaluation",
   "human_approver": "string | null", "approval_reason": "string | null",
-  "created_at": "timestamp", "record_hash": "sha256 hex", "prev_hash": "sha256 hex (genesis = 64 zeros)"
+  "created_at": "timestamp", "record_hash": "sha256 hex", "prev_hash": "sha256 hex (genesis = 64 zeros)",
+  "evidence_schema_version": "string   ← version of the EvidenceRecord schema at write time; governs what fields were captured"
 }
 ```
 

@@ -23,6 +23,9 @@ from psycopg.types.json import Jsonb
 from pydantic import BaseModel
 
 from app.audit.models import GENESIS_PREV_HASH
+
+# Simple module-level constant — no migration tooling needed since demo data is ephemeral.
+EVIDENCE_SCHEMA_VERSION = "1.0.0"
 from app.config import get_settings
 from app.schemas.action import Action, EnforcementMode
 from app.schemas.audit import EvidenceRecord, RecordType
@@ -120,6 +123,7 @@ class AuditStore:
             "approval_reason": approval_reason,
             "created_at": created_at,
             "prev_hash": prev_hash,
+            "evidence_schema_version": EVIDENCE_SCHEMA_VERSION,
         }
         record_hash = _hash_payload(row_for_hash, prev_hash)
 
@@ -156,6 +160,7 @@ class AuditStore:
             created_at=created_at,
             record_hash=record_hash,
             prev_hash=prev_hash,
+            evidence_schema_version=EVIDENCE_SCHEMA_VERSION,
         )
 
     def read_records(self) -> list[EvidenceRecord]:
@@ -186,6 +191,7 @@ class AuditStore:
                 "approval_reason": raw["approval_reason"],
                 "created_at": raw["created_at"],
                 "prev_hash": raw["prev_hash"],
+                "evidence_schema_version": raw.get("evidence_schema_version", EVIDENCE_SCHEMA_VERSION),
             }
 
             if raw["prev_hash"] != expected_prev_hash:
@@ -341,6 +347,7 @@ class AuditStore:
             created_at=raw["created_at"],
             record_hash=raw["record_hash"],
             prev_hash=raw["prev_hash"],
+            evidence_schema_version=raw.get("evidence_schema_version", EVIDENCE_SCHEMA_VERSION),
         )
 
     def _ensure_table(self) -> None:
@@ -363,7 +370,8 @@ class AuditStore:
                         approval_reason TEXT,
                         created_at TEXT NOT NULL,
                         record_hash TEXT NOT NULL,
-                        prev_hash TEXT NOT NULL
+                        prev_hash TEXT NOT NULL,
+                        evidence_schema_version TEXT NOT NULL DEFAULT '1.0.0'
                     )
                     """
                 )
@@ -388,7 +396,8 @@ class AuditStore:
                         approval_reason text,
                         created_at timestamptz NOT NULL,
                         record_hash text NOT NULL,
-                        prev_hash text NOT NULL
+                        prev_hash text NOT NULL,
+                        evidence_schema_version text NOT NULL DEFAULT '1.0.0'
                     )
                     """
                 )
@@ -410,6 +419,7 @@ class AuditStore:
         created_at: datetime,
         record_hash: str,
         prev_hash: str,
+        evidence_schema_version: str = EVIDENCE_SCHEMA_VERSION,
     ) -> int:
         if self._uses_sqlite:
             with self._sqlite_connection() as connection:
@@ -418,8 +428,9 @@ class AuditStore:
                     INSERT INTO audit_records (
                         correlation_id, action, context_used, evidence, decision,
                         enforcement_mode, executed, record_type, references_hash,
-                        human_approver, approval_reason, created_at, record_hash, prev_hash
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        human_approver, approval_reason, created_at, record_hash, prev_hash,
+                        evidence_schema_version
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         str(correlation_id),
@@ -436,6 +447,7 @@ class AuditStore:
                         created_at.isoformat(),
                         record_hash,
                         prev_hash,
+                        evidence_schema_version,
                     ),
                 )
                 return int(cursor.lastrowid)
@@ -447,8 +459,9 @@ class AuditStore:
                     INSERT INTO audit_records (
                         correlation_id, action, context_used, evidence, decision,
                         enforcement_mode, executed, record_type, references_hash,
-                        human_approver, approval_reason, created_at, record_hash, prev_hash
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        human_approver, approval_reason, created_at, record_hash, prev_hash,
+                        evidence_schema_version
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id
                     """,
                     (
@@ -466,6 +479,7 @@ class AuditStore:
                         created_at,
                         record_hash,
                         prev_hash,
+                        evidence_schema_version,
                     ),
                 )
                 return int(cursor.fetchone()[0])
@@ -477,7 +491,8 @@ class AuditStore:
                     """
                     SELECT id, correlation_id, action, context_used, evidence, decision,
                            enforcement_mode, executed, record_type, references_hash,
-                           human_approver, approval_reason, created_at, record_hash, prev_hash
+                           human_approver, approval_reason, created_at, record_hash, prev_hash,
+                           evidence_schema_version
                     FROM audit_records ORDER BY id ASC
                     """
                 ).fetchall()
@@ -489,7 +504,8 @@ class AuditStore:
                     """
                     SELECT id, correlation_id, action, context_used, evidence, decision,
                            enforcement_mode, executed, record_type, references_hash,
-                           human_approver, approval_reason, created_at, record_hash, prev_hash
+                           human_approver, approval_reason, created_at, record_hash, prev_hash,
+                           evidence_schema_version
                     FROM audit_records ORDER BY id ASC
                     """
                 )
@@ -536,6 +552,7 @@ class AuditStore:
             created_at,
             record_hash,
             prev_hash,
+            evidence_schema_version,
         ) = row
         return {
             "id": int(id_),
@@ -553,6 +570,7 @@ class AuditStore:
             "created_at": datetime.fromisoformat(created_at),
             "record_hash": record_hash,
             "prev_hash": prev_hash,
+            "evidence_schema_version": evidence_schema_version,
         }
 
     @staticmethod
@@ -573,6 +591,7 @@ class AuditStore:
             created_at,
             record_hash,
             prev_hash,
+            evidence_schema_version,
         ) = row
         return {
             "id": int(id_),
@@ -590,6 +609,7 @@ class AuditStore:
             "created_at": created_at,
             "record_hash": record_hash,
             "prev_hash": prev_hash,
+            "evidence_schema_version": evidence_schema_version,
         }
 
     def _sqlite_connection(self) -> sqlite3.Connection:

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 
 from app.audit.models import GENESIS_PREV_HASH
-from app.audit.store import canonical_json
+from app.audit.store import EVIDENCE_SCHEMA_VERSION, canonical_json
 from tests.T12_audit.conftest import sample_action, sample_context, sample_decision, sample_evidence
 
 
@@ -59,6 +59,7 @@ def test_record_hash_excludes_id_and_record_hash_fields(store):
         "approval_reason": row.approval_reason,
         "created_at": row.created_at,
         "prev_hash": row.prev_hash,
+        "evidence_schema_version": EVIDENCE_SCHEMA_VERSION,
     }
     recomputed = sha256((canonical_json(payload) + row.prev_hash).encode("utf-8")).hexdigest()
     assert recomputed == row.record_hash

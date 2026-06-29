@@ -64,7 +64,7 @@ Narration: "You decide the confidence level at which the system defers to a huma
 
 Open the audit log. Click Verify chain and show the green intact result and verified count. Then click Simulate tampering, re-verify, and show the red broken link, mismatched hashes, and exact failing record. Download the audit package.
 
-Narration: "Every decision is hash-chained. If anyone alters a historical record, the chain breaks and tells you where. Evidence can be extracted for external review. This is not only logging; it is evidential integrity."
+Narration: "Every decision is hash-chained. If anyone alters a historical record, the chain breaks and tells you where. Evidence can be extracted for external review. This is not only logging; it is evidential integrity. And notice that every record in the package carries an evidence schema version — so you can show a regulator not only what was captured, but that the definition of 'captured' was itself controlled and has not silently drifted between the start and end of the reporting period."
 
 ## Beat 10 — Fail closed
 

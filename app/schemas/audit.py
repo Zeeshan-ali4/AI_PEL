@@ -40,3 +40,4 @@ class EvidenceRecord(BaseModel):
     created_at: datetime = Field(..., description="Timestamp at which the audit row was created.")
     record_hash: Sha256Hex = Field(..., description="SHA-256 hash of this record.")
     prev_hash: Sha256Hex = Field(..., description="SHA-256 hash of the previous record, or genesis zeroes.")
+    evidence_schema_version: str = Field(..., description="Version of the EvidenceRecord schema at write time; shows that the definition of captured evidence is governed and versioned.")

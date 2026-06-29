@@ -122,6 +122,7 @@ def record(**overrides) -> EvidenceRecord:
         created_at=NOW,
         record_hash=ONE_HASH,
         prev_hash=ZERO_HASH,
+        evidence_schema_version="1.0.0",
     )
     data.update(overrides)
     return EvidenceRecord(**data)

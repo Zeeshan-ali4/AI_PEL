@@ -31,6 +31,7 @@ from app.schemas.evidence import Evidence
 from app.semantic import evidence_builder
 from app.semantic.nuance_stub import SCENARIO_5_CONFIDENCE
 from app.settings_store import VALID_ENFORCEMENT_MODES
+from app.web.regulator_questions import build_regulator_question_rows
 from scenarios.scenarios import get_raw_tool_call, get_scenarios
 
 router = APIRouter()
@@ -554,6 +555,7 @@ def _build_decision_view_context(scenario_id: int, result: PipelineResult) -> di
         "enforcement_mode": record.enforcement_mode.value,
         "would_have": outcome.would_have,
         "queued": outcome.queued,
+        "regulator_question_rows": build_regulator_question_rows(record),
     }
 
 
@@ -800,6 +802,7 @@ def _record_view_context(record: EvidenceRecord, records: list[EvidenceRecord]) 
         "framework_mappings": decision.framework_mappings,
         "referenced": referenced,
         "package_export_url": f"/audit/export.json?correlation_id={record.correlation_id}",
+        "regulator_question_rows": build_regulator_question_rows(record),
     }
 
 

@@ -17,6 +17,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Stre
 from fastapi.templating import Jinja2Templates
 
 from app.audit.models import GENESIS_PREV_HASH
+from app.audit.sufficiency import build_sufficiency_checklist
 from app.audit.store import _hash_payload
 from app.context import resolver as context_resolver
 from app.normaliser.normaliser import normalise
@@ -798,6 +799,14 @@ def _record_view_context(record: EvidenceRecord, records: list[EvidenceRecord]) 
     action = record.action
     decision = record.decision
 
+    linked_approvals = [
+        candidate
+        for candidate in records
+        if candidate.record_type == RecordType.APPROVAL_DECISION
+        and candidate.references_hash == record.record_hash
+        and candidate.correlation_id == record.correlation_id
+    ]
+
     return {
         "record": record,
         "is_approval_decision": record.record_type == RecordType.APPROVAL_DECISION,
@@ -810,6 +819,7 @@ def _record_view_context(record: EvidenceRecord, records: list[EvidenceRecord]) 
         "referenced": referenced,
         "package_export_url": f"/audit/export.json?correlation_id={record.correlation_id}",
         "regulator_question_rows": build_regulator_question_rows(record),
+        "sufficiency_items": build_sufficiency_checklist(record, linked_approvals),
     }
 
 

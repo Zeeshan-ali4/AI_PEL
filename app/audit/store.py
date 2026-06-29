@@ -518,6 +518,28 @@ class AuditStore:
                 return row
         raise ValueError(f"no audit record with id {record_id}")
 
+    def _update_created_at(self, record_id: int, created_at: datetime) -> None:
+        """Test helper: back-date a record's created_at for period-filter tests.
+
+        Not part of the normal write path. Only used in tests to seed records
+        at specific timestamps so period-filter logic can be exercised without
+        sleeping.
+        """
+        if self._uses_sqlite:
+            with self._sqlite_connection() as connection:
+                connection.execute(
+                    "UPDATE audit_records SET created_at = ? WHERE id = ?",
+                    (created_at.isoformat(), record_id),
+                )
+            return
+
+        with self._postgres_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "UPDATE audit_records SET created_at = %s WHERE id = %s",
+                    (created_at, record_id),
+                )
+
     def _update_executed(self, record_id: int, executed: bool) -> None:
         if self._uses_sqlite:
             with self._sqlite_connection() as connection:

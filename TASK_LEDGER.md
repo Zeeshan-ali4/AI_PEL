@@ -387,7 +387,7 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 This phase exists for one reason: a Head of Risk and Assurance does not just want to see that the gate makes decisions — they want to see that, without it, they would not know what evidence to capture or whether it would satisfy a regulator, and that this build answers both. T26–T29 are presentational/content work over fields the pipeline already produces in T02/T07/T10/T12. Only T29 adds a schema field; everything else maps existing data, it does not compute anything new.
 
 ## T26 — "If a regulator asked..." evidence mapping
-- **Status:** To do
+- **Status:** Done
 - **Goal:** On the decision page (post-scenario-run) and the record view, add a panel that lists the specific questions a regulator or internal auditor would ask about an AI-agent action, and shows, field by field, which part of the existing record answers each one. This is the single most direct way to make the "we already know what to log and it's sufficient" argument land — without it, the buyer has to infer sufficiency themselves from scattered fields.
 - **Depends on:** T17, T19
 - **Spec refs:** §5 (Action/Context/Evidence/Decision/EvidenceRecord field set), §7 (scenario table), §9 (assurance narrative)

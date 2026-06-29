@@ -14,6 +14,9 @@ from app.audit.models import GENESIS_PREV_HASH
 from app.schemas.audit import RecordType
 from app.schemas.decision import DecisionValue
 
+CONTROL_MAPPING_LABEL = "Framework/control mapping present"
+HUMAN_OVERSIGHT_LABEL = "Human oversight evidenced where required"
+
 
 @dataclass(frozen=True)
 class SufficiencyItem:
@@ -86,7 +89,7 @@ def _control_mapping_item(record: Any) -> SufficiencyItem:
     if _record_type(record) == "approval_decision":
         return _item(
             "control_mapping",
-            "Framework/control mapping present",
+            CONTROL_MAPPING_LABEL,
             "not-applicable",
             "This is an approval_decision record; the original action_evaluation carries the applied control/framework mapping.",
         )
@@ -97,10 +100,10 @@ def _control_mapping_item(record: Any) -> SufficiencyItem:
     mappings = _value(decision, "framework_mappings") or []
     decision_value = _enum_value(_value(decision, "decision"))
     if mappings and (control_id or triggered):
-        return _item("control_mapping", "Framework/control mapping present", "met", f"control_id={control_id}; framework_mappings={mappings}.")
+        return _item("control_mapping", CONTROL_MAPPING_LABEL, "met", f"control_id={control_id}; framework_mappings={mappings}.")
     if decision_value == "allow" and not control_id and not triggered:
-        return _item("control_mapping", "Framework/control mapping present", "not-applicable", "Clean allow with no triggered control; no framework mapping is required for this record shape.")
-    return _item("control_mapping", "Framework/control mapping present", "missing", "A control-triggered decision should carry control_id/triggered_controls and framework_mappings.")
+        return _item("control_mapping", CONTROL_MAPPING_LABEL, "not-applicable", "Clean allow with no triggered control; no framework mapping is required for this record shape.")
+    return _item("control_mapping", CONTROL_MAPPING_LABEL, "missing", "A control-triggered decision should carry control_id/triggered_controls and framework_mappings.")
 
 
 def _chain_position_item(record: Any) -> SufficiencyItem:
@@ -117,16 +120,16 @@ def _human_oversight_item(record: Any, linked_approval_records: list[Any]) -> Su
         if _present_fields(record, "references_hash", "human_approver", "approval_reason", "executed"):
             return _item(
                 "human_oversight",
-                "Human oversight evidenced where required",
+                HUMAN_OVERSIGHT_LABEL,
                 "met",
                 f"approval_decision records human_approver={_value(record, 'human_approver')!r}, approval_reason, references_hash={_value(record, 'references_hash')}, executed={_value(record, 'executed')}.",
             )
-        return _item("human_oversight", "Human oversight evidenced where required", "missing", "Approval record is missing approver, reason, reference hash, or executed state.")
+        return _item("human_oversight", HUMAN_OVERSIGHT_LABEL, "missing", "Approval record is missing approver, reason, reference hash, or executed state.")
 
     decision = _value(record, "decision")
     requires_human = _enum_value(_value(decision, "decision")) == "escalate" or bool(_value(decision, "required_approval_role"))
     if not requires_human:
-        return _item("human_oversight", "Human oversight evidenced where required", "not-applicable", "The binding decision did not require human approval.")
+        return _item("human_oversight", HUMAN_OVERSIGHT_LABEL, "not-applicable", "The binding decision did not require human approval.")
 
     original_hash = _value(record, "record_hash")
     correlation = str(_value(record, "correlation_id"))
@@ -141,12 +144,12 @@ def _human_oversight_item(record: Any, linked_approval_records: list[Any]) -> Su
         ):
             return _item(
                 "human_oversight",
-                "Human oversight evidenced where required",
+                HUMAN_OVERSIGHT_LABEL,
                 "met",
                 f"Linked approval_decision by {_value(approval, 'human_approver')!r} references this record_hash and records a reason/result.",
             )
     role = _value(decision, "required_approval_role") or "required approval role"
-    return _item("human_oversight", "Human oversight evidenced where required", "pending", f"Decision requires {role}; no linked approval_decision record is present yet.")
+    return _item("human_oversight", HUMAN_OVERSIGHT_LABEL, "pending", f"Decision requires {role}; no linked approval_decision record is present yet.")
 
 
 def _item(key: str, label: str, status: str, evidence: str) -> SufficiencyItem:

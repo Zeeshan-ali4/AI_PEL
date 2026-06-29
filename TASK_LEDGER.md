@@ -7,6 +7,7 @@
 - Current task: T22 / T23 / T25 (parallelisable); T20 and T21 pending revised dependencies
 - Last completed task: T19
 - Known blockers: none
+- **New since last update:** Phase 5 — Evidence & Assurance Enhancements (T26–T29, backlog T30) added below. These exist to make the demo's core sales argument explicit for a Risk & Assurance buyer: that without a deterministic policy layer it is hard to know what evidence to log or whether it is sufficient for regulatory reporting, and that this build answers both questions structurally. T26–T29 are mostly template/content work over fields the pipeline already produces; only T29 touches the schema (see its note on Golden rule 6).
 
 ## How to use this ledger
 
@@ -36,9 +37,10 @@ Phase 2  Components          T03 → T04 → T05 → T06 → T07 → T08 → T09
 Phase 3  Assurance UI        T14 → T15 → T16 → T17 → T18 → T19
 Phase 3B Production Feel     T22 (parallel: T23, T25) → T24
 Phase 4  Verify & present    T20 → T21
+Phase 5  Evidence & Assurance T26 → T27 → T28 → T29   (T30 backlog, not scheduled)
 ```
 
-Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON endpoint, before any UI). Demo-ready is **T19**. Production-feel milestone is **T24** (live event feed, rule editor, audit security). Tasks within a phase are mostly linear; where two can run in parallel it is noted.
+Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON endpoint, before any UI). Demo-ready is **T19**. Production-feel milestone is **T24** (live event feed, rule editor, audit security). Phase 5 is the **evidence-sufficiency milestone**: it does not change what the gate decides, only how clearly the demo proves, to a regulator-literate audience, that the evidence it produces is structurally adequate.
 
 ---
 
@@ -380,6 +382,120 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 
 ---
 
+# PHASE 5 — Evidence & Assurance Enhancements
+
+This phase exists for one reason: a Head of Risk and Assurance does not just want to see that the gate makes decisions — they want to see that, without it, they would not know what evidence to capture or whether it would satisfy a regulator, and that this build answers both. T26–T29 are presentational/content work over fields the pipeline already produces in T02/T07/T10/T12. Only T29 adds a schema field; everything else maps existing data, it does not compute anything new.
+
+## T26 — "If a regulator asked..." evidence mapping
+- **Status:** To do
+- **Goal:** On the decision page (post-scenario-run) and the record view, add a panel that lists the specific questions a regulator or internal auditor would ask about an AI-agent action, and shows, field by field, which part of the existing record answers each one. This is the single most direct way to make the "we already know what to log and it's sufficient" argument land — without it, the buyer has to infer sufficiency themselves from scattered fields.
+- **Depends on:** T17, T19
+- **Spec refs:** §5 (Action/Context/Evidence/Decision/EvidenceRecord field set), §7 (scenario table), §9 (assurance narrative)
+- **Files:**
+  - `app/web/templates/_regulator_questions.html` — new shared partial, included from both `decision.html` and `record.html`
+  - `app/web/templates/decision.html` — include partial
+  - `app/web/templates/record.html` — include partial
+  - `app/web/routes.py` — build the question→field mapping context for both routes
+  - `app/web/regulator_questions.py` — new small module: a pure function that takes an `Action`/`Decision`/`EvidenceRecord` (or the existing record) and returns an ordered list of `{question, answer_field_label, answer_value}` rows
+  - `tests/T26_regulator_questions/`
+- **Key notes:**
+  - **No new computation.** Every "answer" is a value already present on the record: `executed`, `enforcement_mode`, `control_id`, `decision.reason`, `framework_mappings`, `context_used.*`, `evidence.*`, `required_approval_role`, `record_hash`/`prev_hash`, and for `approval_decision` records, `human_approver`/`approval_reason`. This task only decides which question each field answers and renders it as a pair.
+  - **Question set should cover at minimum:** (1) Was the action intercepted before execution? (2) What policy/control was applied, and what does it map to? (3) What evidence and context informed the decision? (4) Who or what made the decision — model or policy engine? (5) Was a human involved where judgement was required, and is that decision itself evidenced? (6) Can this record be shown to have not been altered after the fact?
+  - **Vary by record shape.** A `fail_closed` record should show "the policy engine was unreachable; the system defaulted to stop" against question 4, not a blank. A payment record should show "semantic layer not invoked — not needed for this action type" against question 3, consistent with the existing `evidence.evaluated=false` framing already in `record.html`/`decision.html`.
+  - **Do not duplicate the existing "Evidence" and "Binding decision" sections** — this panel sits alongside them as an explicit index into them, framed as regulator questions, not as a third copy of the same data.
+- **Done when:**
+  1. Decision page and record page both show a "If a regulator asked..." panel with at least 6 questions
+  2. Each question's answer cites an existing record field — no hardcoded or invented answers
+  3. The panel correctly reflects `fail_closed`, `escalate`, `block`, `allow`, and `allow_with_logging` outcomes, and both `action_evaluation` and `approval_decision` record types
+  4. Panel content differs sensibly between payment and email scenarios (semantic question answered differently)
+- **Verify:** Run each of the six scenarios plus one approval and one fail-closed simulation. Open the decision page and the record view for each. Confirm the regulator-questions panel renders sensible, field-backed answers for every case, including the two edge cases (fail_closed, approval_decision).
+- **Reviewer focus:** that the mapping module is the only place questions are defined (single source of truth, not duplicated string literals in templates); that no answer is fabricated or summarised away from what the record actually contains.
+- **Estimate:** 0.5–1 day. Mostly a mapping module plus a template partial reused twice.
+
+## T27 — "Evidence gap" contrast page + demo Beat 0
+- **Status:** To do
+- **Goal:** Add a short static page that states, plainly, what the evidence picture looks like for an AI-agent deployment **without** a deterministic policy/enforcement layer (unstructured logs, no pre-execution capture, no standardised decision field, no context-at-decision-time capture, no tamper-evident chain of custody, no framework traceability) — set directly against what this build produces for the same action, with a link into a live scenario run. This is the contrast that makes the rest of the demo land; right now the demo shows the "with this" side well but never states the "without this" side out loud.
+- **Depends on:** T19
+- **Spec refs:** §1, §1A, §9
+- **Files:**
+  - `app/web/templates/evidence_gap.html` — new page
+  - `app/web/routes.py` — new `GET /evidence-gap` route
+  - `app/web/templates/base.html` — add nav link
+  - `DEMO_SCRIPT.md` — new **Beat 0** before the existing Beat 1, renumber narration references if needed
+  - `tests/T27_evidence_gap/`
+- **Key notes:**
+  - **Two-column or before/after layout.** Left: "Without a policy enforcement layer" — five or six short, concrete pain points (e.g. "you only know what happened after it happened," "what counts as a 'decision' is implicit, not a field," "reconstructing context after the fact means querying five systems and hoping nothing's changed"). Right: "With AI PEL" — the corresponding capability, each one linking to a concrete field name or page already in the app (e.g. links to `/scenarios`, an example `/records/{hash}`).
+  - **Tone:** matter-of-fact, not salesy. This is a risk audience; overclaiming undermines credibility built up by the existing "what's real vs stubbed" honesty section. Keep claims scoped to what the demo actually shows.
+  - **Demo script:** Beat 0 narration, roughly: "Before we look at the system, it's worth being explicit about the problem it solves. [Walk the contrast page.] Now let's see what evidence actually looks like when it's structural rather than reconstructed." Keep this beat to under a minute — it's framing, not the main event.
+- **Done when:**
+  1. `/evidence-gap` renders the without/with contrast with at least 5 paired points
+  2. Nav link present from any page
+  3. At least one "with AI PEL" point links to a live, working page in the app
+  4. `DEMO_SCRIPT.md` has a new Beat 0 ahead of the existing dashboard-calm beat, and subsequent beat numbers/cross-references are still consistent
+- **Verify:** Open `/evidence-gap` cold. Click through to the linked live page and confirm it's a real, populated view (not a dead link). Read the updated demo script start-to-finish and confirm beat numbering is consistent throughout.
+- **Reviewer focus:** the page must not assert anything the rest of the demo can't immediately back up; it should read as a one-minute framing device, not a sales slide. No invented statistics.
+- **Estimate:** 0.5 day. Static content plus one route.
+
+## T28 — Evidence sufficiency checklist (record view)
+- **Status:** To do
+- **Goal:** On the record view, add a checklist that evaluates the record's own fields against a small, clearly-labelled set of illustrative sufficiency criteria (e.g. "pre-execution interception evidenced," "decision rationale recorded," "framework mapping present," "tamper-evident chain position recorded," "human oversight evidenced where required") and renders each as met/not-applicable/missing. This turns "is this enough evidence?" from a question the buyer has to answer themselves into something the record visibly answers.
+- **Depends on:** T17, T26
+- **Spec refs:** §5, §9 (illustrative-mapping disclaimer pattern already established for `framework_mappings`)
+- **Files:**
+  - `app/audit/sufficiency.py` — new pure function: `EvidenceRecord -> list[SufficiencyItem]`, no persistence, no new schema fields
+  - `app/web/templates/record.html` — extend with checklist section
+  - `app/web/routes.py` — wire the checklist into the record route's context
+  - `tests/T28_evidence_sufficiency/`
+- **Key notes:**
+  - **Hard scope boundary:** this is a demo-illustrative checklist against criteria you define, not a certification engine and not a claim of regulatory compliance. Label it exactly as clearly as the existing `framework_mappings` disclaimer ("(illustrative mapping)") — e.g. "Illustrative sufficiency check, not a compliance certification."
+  - **Criteria must be derivable from fields that already exist** on `EvidenceRecord` (no new schema needed for this task — that's reserved for T29's single new field). Example mapping: interception evidenced → `executed` + `enforcement_mode` both present; decision rationale recorded → `decision.reason` non-empty; framework mapping present → `framework_mappings` non-empty; chain position recorded → `record_hash` + `prev_hash` present; human oversight evidenced where required → for `escalate` decisions, a linked `approval_decision` record exists (or is clearly flagged as pending).
+  - **Handle record types correctly:** an `allow` record with no triggered control should show "human oversight" as not-applicable, not missing — don't penalise records for not needing something the scenario didn't require.
+- **Done when:**
+  1. Record view shows a sufficiency checklist of at least 5 items for every record type produced by the six scenarios, approvals, and fail-closed runs
+  2. Each item is correctly met / not-applicable / missing based on real field values, never hardcoded per scenario
+  3. The checklist carries an explicit "illustrative, not a certification" label
+  4. An `escalate` record with no linked approval yet correctly shows the human-oversight item as pending/missing; once approved, re-viewing shows it as met
+- **Verify:** Run all six scenarios, view each record, confirm checklist renders sensibly. Run Scenario 2, view its record before approving (oversight item should show pending), approve it, view the record again (should now show met).
+- **Reviewer focus:** the checklist function must read only from the record's own fields — no scenario-number special-casing inside `sufficiency.py`. The illustrative/non-certification framing must be unmissable.
+- **Estimate:** 0.5–1 day.
+
+## T29 — Evidence schema versioning + regulatory export framing
+- **Status:** To do
+- **Goal:** Add a single `evidence_schema_version` field to `EvidenceRecord`, populated on every write, surfaced on the record view and in audit exports — so the buyer sees that the *definition* of sufficient evidence is itself versioned and governed, not informal. Pair this with narration-only updates to the existing audit package export (T25) and `DEMO_SCRIPT.md` Beat 9, reframing the already-built "Download audit package" feature explicitly as a regulatory-reporting artefact, with no functional change to the export itself.
+- **Depends on:** T02, T25
+- **Spec refs:** §5 (schema) — **note Golden rule 6: this is a schema change, so `MASTER_SPEC.md` §5 must be updated first**, with a version bump noted at the top of the spec, before implementation.
+- **Files:**
+  - `MASTER_SPEC.md` — update §5 `EvidenceRecord` definition first; bump spec version
+  - `app/schemas/audit.py` — add `evidence_schema_version: str` field
+  - `app/audit/store.py` — set the version constant when writing every record
+  - `app/web/templates/record.html` — display the field
+  - `app/web/templates/audit.html` — include it in the audit log table or package export description
+  - `DEMO_SCRIPT.md` — update Beat 9 narration only (no behaviour change to the export itself)
+  - `tests/T29_evidence_schema_version/`
+- **Key notes:**
+  - **Spec-first, per the golden rules.** Do not touch `app/schemas/audit.py` until `MASTER_SPEC.md` §5 reflects the new field.
+  - **Keep it simple.** A single module-level constant (e.g. `EVIDENCE_SCHEMA_VERSION = "1.0.0"`) is sufficient for the demo; no migration tooling is needed since the demo's Postgres data is ephemeral and reset between runs. State this plainly in code comments rather than building anything more elaborate.
+  - **Beat 9 reframing example:** "This package isn't just a log export — every record in it carries an evidence schema version, so you can show a regulator not only what was captured, but that the definition of 'captured' was itself controlled and hasn't silently drifted between the start and end of the reporting period."
+- **Done when:**
+  1. Every newly written record (both `action_evaluation` and `approval_decision`) carries `evidence_schema_version`
+  2. The field is visible on the record view and included in both JSON and printable HTML exports
+  3. `MASTER_SPEC.md` §5 documents the field and the spec version is bumped
+  4. `DEMO_SCRIPT.md` Beat 9 narration mentions schema versioning; the underlying export mechanism is otherwise unchanged from T25
+- **Verify:** Run a scenario, view the record, confirm the version field is present. Export JSON and printable HTML, confirm it's included in both. Diff `MASTER_SPEC.md` to confirm the schema update predates the code change in commit order.
+- **Reviewer focus:** schema-first discipline (golden rule 6) was actually followed; no other field semantics were disturbed by this change; the export's existing tamper-evidence behaviour from T25 is untouched.
+- **Estimate:** 0.5 day.
+
+## T30 — Reporting dashboard summary view (backlog, not scheduled)
+- **Status:** Backlog
+- **Goal:** A separate aggregate view, distinct from the per-record evidence shown in T26–T29, that rolls records up into the kind of period summary a Head of Risk would actually present upward or to a regulator: total actions evaluated, breakdown by decision and control, count of escalations with linked human decisions vs pending, and a chain-integrity verification timestamp for the period. This moves the demo from "look at one record" to "look at your reporting posture" — but it's a materially bigger piece of work than T26–T29 and isn't needed for the current demo script.
+- **Depends on:** T28, T29 (consumes their output)
+- **Spec refs:** none yet — would need a short spec addendum before scheduling
+- **Files:** not yet scoped
+- **Key notes:** Deliberately left unscoped. Do not start without first writing a short spec addendum (per golden rule 6) and confirming it's worth the build time relative to T26–T29's lower-effort, higher-leverage additions.
+- **Estimate:** not estimated — scope first.
+
+---
+
 # PHASE 4 — Verify & present
 
 ## T20 — Test suite
@@ -427,11 +543,16 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 - **T24 depends on T22** (for pipeline trace linkage).
 - T20 depends on T22 and T23 (test suite must cover new behaviour).
 - T21 depends on all Phase 3B tasks (demo script must narrate new features).
+- **T26 depends on T17/T19** and can run independently of T20/T21.
+- **T27 depends only on T19** and can run in parallel with T26.
+- **T28 depends on T17 and T26** (reuses the question-mapping module's framing conventions).
+- **T29 depends on T02 and T25**, and should run after T26–T28 land so its narration update to Beat 9 doesn't conflict with T27's Beat 0 insertion in `DEMO_SCRIPT.md`.
+- T30 is backlog — not scheduled, needs its own spec addendum first.
 - Everything else is linear by dependency.
 
 ---
 
-## Effort estimates (Phase 3B + Phase 4)
+## Effort estimates (Phase 3B + Phase 4 + Phase 5)
 
 | Task | Effort | Notes |
 |------|--------|-------|
@@ -441,4 +562,9 @@ Integration milestone is **T13** (all six scenarios pass end-to-end via a JSON e
 | T25 — Audit security | 0.5–1 day | Template work + small export function |
 | T20 — Test suite | 1–1.5 days | Extended to cover T22/T23 |
 | T21 — README + demo script | 1–1.5 days | Includes three minor code additions + full narration |
-| **Total** | **~7–10 days** | Discipline required — do not let T22 or T23 expand |
+| T26 — Regulator's-question mapping | 0.5–1 day | One mapping module + one reused template partial |
+| T27 — Evidence gap contrast page | 0.5 day | Static content + one route |
+| T28 — Evidence sufficiency checklist | 0.5–1 day | Pure function over existing fields + template section |
+| T29 — Schema version + export framing | 0.5 day | Spec update first, then a one-field schema change |
+| T30 — Reporting dashboard (backlog) | not estimated | Needs its own spec addendum before scheduling |
+| **Total (scheduled, excl. T30)** | **~9–12 days** | Discipline required — do not let T22, T23, or Phase 5 expand scope |

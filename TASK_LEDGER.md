@@ -437,7 +437,7 @@ This phase exists for one reason: a Head of Risk and Assurance does not just wan
 - **Estimate:** 0.5 day. Static content plus one route.
 
 ## T28 — Evidence sufficiency checklist (record view)
-- **Status:** To do
+- **Status:** Done
 - **Goal:** On the record view, add a checklist that evaluates the record's own fields against a small, clearly-labelled set of illustrative sufficiency criteria (e.g. "pre-execution interception evidenced," "decision rationale recorded," "framework mapping present," "tamper-evident chain position recorded," "human oversight evidenced where required") and renders each as met/not-applicable/missing. This turns "is this enough evidence?" from a question the buyer has to answer themselves into something the record visibly answers.
 - **Depends on:** T17, T26
 - **Spec refs:** §5, §9 (illustrative-mapping disclaimer pattern already established for `framework_mappings`)

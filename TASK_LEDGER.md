@@ -413,7 +413,7 @@ This phase exists for one reason: a Head of Risk and Assurance does not just wan
 - **Estimate:** 0.5–1 day. Mostly a mapping module plus a template partial reused twice.
 
 ## T27 — "Evidence gap" contrast page + demo Beat 0
-- **Status:** To do
+- **Status:** DONE
 - **Goal:** Add a short static page that states, plainly, what the evidence picture looks like for an AI-agent deployment **without** a deterministic policy/enforcement layer (unstructured logs, no pre-execution capture, no standardised decision field, no context-at-decision-time capture, no tamper-evident chain of custody, no framework traceability) — set directly against what this build produces for the same action, with a link into a live scenario run. This is the contrast that makes the rest of the demo land; right now the demo shows the "with this" side well but never states the "without this" side out loud.
 - **Depends on:** T19
 - **Spec refs:** §1, §1A, §9

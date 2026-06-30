@@ -2,7 +2,10 @@
 
 Aggregates existing EvidenceRecord rows into KPI summaries a Head of Risk
 can present to a board or regulator. No new schema fields; read-only over
-the append-only audit store.
+the append-only audit store. All period filtering and escalation resolution
+are expressed as DB-level queries (WHERE clause / NOT EXISTS subquery) via
+dedicated AuditStore methods — never as Python list comprehensions over all
+rows from read_records().
 """
 
 from __future__ import annotations
@@ -12,7 +15,6 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from app.audit.store import AuditStore, ChainVerificationResult
-from app.schemas.audit import RecordType
 
 VALID_PERIODS = frozenset({"today", "7d", "30d", "all"})
 DEFAULT_PERIOD = "30d"
@@ -62,7 +64,7 @@ def get_report(
     """Aggregate audit records into a period-level summary dict.
 
     Args:
-        store: The live audit store; records are read fresh on every call.
+        store: The live audit store; records are queried fresh on every call.
         period: One of 'today', '7d', '30d', 'all'. Falls back to DEFAULT_PERIOD.
         controls_data: Parsed contents of controls.json (used for name/tier lookup).
         chain_status: Optional result of a recent verify_chain() call; passed
@@ -74,23 +76,10 @@ def get_report(
     if period not in VALID_PERIODS:
         period = DEFAULT_PERIOD
 
-    all_records = store.read_records()
     cutoff = _period_cutoff(period)
 
-    if cutoff is not None:
-        records = [r for r in all_records if _ensure_utc(r.created_at) >= cutoff]
-    else:
-        records = all_records
-
-    action_evals = [r for r in records if r.record_type == RecordType.ACTION_EVALUATION]
-
-    # approval_decision records in the full (unfiltered) store determine resolution
-    # status — an approval written today resolves an escalation from last week.
-    all_approval_corr_ids = {
-        str(r.correlation_id)
-        for r in all_records
-        if r.record_type == RecordType.APPROVAL_DECISION
-    }
+    # DB-level period-filtered query — no in-memory list comprehension over all rows.
+    action_evals = store.read_action_evals_since(cutoff)
 
     # ── 1. Summary cards ────────────────────────────────────────────────────
     total_evaluated = len(action_evals)
@@ -148,10 +137,11 @@ def get_report(
         for ctrl_id, count in sorted(control_counts.items(), key=lambda kv: -kv[1])
     ]
 
-    # ── 4. Escalation resolution ─────────────────────────────────────────────
-    escalate_records = [r for r in action_evals if str(r.decision.decision) == "escalate"]
-    resolved = sum(1 for r in escalate_records if str(r.correlation_id) in all_approval_corr_ids)
-    pending_records = [r for r in escalate_records if str(r.correlation_id) not in all_approval_corr_ids]
+    # ── 4. Escalation resolution (DB-level NOT EXISTS / EXISTS subqueries) ──
+    # Approval-decision records from any time can resolve escalations in the period.
+    # Resolution is determined entirely in SQL — no Python set membership check.
+    pending_records = store.read_pending_escalations(cutoff)
+    resolved = store.read_resolved_escalation_count(cutoff)
 
     escalation_summary = {
         "resolved": resolved,

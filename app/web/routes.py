@@ -21,6 +21,7 @@ from app.audit.reporting import DEFAULT_PERIOD, VALID_PERIODS, get_report
 from app.audit.sufficiency import build_sufficiency_checklist
 from app.audit.store import ChainVerificationResult, _hash_payload
 from app.context import resolver as context_resolver
+from app.context.fixtures import DEMO_FIXTURE_NOTICE, FIXTURE_SYSTEM_LABELS
 from app.normaliser.normaliser import normalise
 from app.pipeline import PipelineResult, UnknownScenarioError, get_pipeline
 from app.policy import opa_client
@@ -532,6 +533,148 @@ def _build_context_rows(action: Action, context: Context) -> list[dict[str, Any]
     return rows
 
 
+def _bool_phrase(value: bool, true_text: str, false_text: str) -> str:
+    return true_text if value else false_text
+
+
+def _fixture_note(system_key: str, why_it_matters: str) -> str:
+    label = FIXTURE_SYSTEM_LABELS[system_key]
+    return f"Fixture-backed demo source ({label}). {why_it_matters} {DEMO_FIXTURE_NOTICE}"
+
+
+def _build_evidence_source_rows(
+    action: Action, context: Context, evidence: Evidence, decision: Decision
+) -> list[dict[str, Any]]:
+    """Build board-readable evidence-source rows for the decision detail view.
+
+    These rows are derived from the already-persisted decision record fields. They
+    do not introduce a connector model or imply real enterprise integrations.
+    """
+
+    rows: list[dict[str, Any]] = []
+
+    if action.action_type == ActionType.FINANCIAL_PAYMENT_ISSUE:
+        customer_bits = [
+            f"{context.customer.status.value} customer",
+            _bool_phrase(context.customer.fraud_flag, "active fraud flag", "no fraud flag"),
+            _bool_phrase(context.customer.vulnerability_flag, "vulnerability flag", "no vulnerability flag"),
+            _bool_phrase(context.customer.sanctions_match, "sanctions match", "no sanctions match"),
+        ]
+        rows.append(
+            {
+                "source_name": "CRM / Customer profile",
+                "source_type": "fixture_crm",
+                "evidence_checked": "customer_status, fraud_flag, vulnerability_flag, sanctions_match",
+                "value": "; ".join(customer_bits),
+                "status": "available" if context.context_resolution_ok else "unavailable",
+                "demo_note": _fixture_note(
+                    "crm",
+                    "Used to identify customer-risk controls before any payment execution.",
+                ),
+            }
+        )
+
+        amount = action.parameters.get("amount_gbp")
+        payment_value = (
+            f"£{amount:g} payment; {context.payment_history.count_30d} payment(s) in last 30 days; "
+            f"£{context.payment_history.total_30d_gbp:g} recent total"
+            if isinstance(amount, int | float)
+            else (
+                f"payment amount unavailable; {context.payment_history.count_30d} payment(s) in last 30 days; "
+                f"£{context.payment_history.total_30d_gbp:g} recent total"
+            )
+        )
+        rows.append(
+            {
+                "source_name": "Payments history",
+                "source_type": "fixture_payments",
+                "evidence_checked": "payment amount, count_30d, total_30d_gbp, last_payment_date",
+                "value": payment_value,
+                "status": "available" if context.context_resolution_ok else "unavailable",
+                "demo_note": _fixture_note(
+                    "payment_history",
+                    "Used to determine whether payment thresholds or recent-payment controls apply.",
+                ),
+            }
+        )
+
+        if isinstance(amount, int | float) and amount > 500 or context.approval_state.has_approval:
+            approval_value = (
+                f"approval {context.approval_state.approval_id} from {context.approval_state.approver}"
+                if context.approval_state.has_approval
+                else "no prior approval found"
+            )
+            rows.append(
+                {
+                    "source_name": "Approval register",
+                    "source_type": "fixture_approval_register",
+                    "evidence_checked": "prior approval exists, approver, approval_id",
+                    "value": approval_value,
+                    "status": "available" if context.context_resolution_ok else "unavailable",
+                    "demo_note": _fixture_note(
+                        "approval",
+                        "Used to decide whether named human approval is required before execution.",
+                    ),
+                }
+            )
+    else:
+        content_signals = [
+            _bool_phrase(evidence.contains_personal_data, "personal data detected", "no personal data detected"),
+            _bool_phrase(
+                evidence.contains_special_category_data,
+                "special-category indicators detected",
+                "no special-category indicators detected",
+            ),
+            f"vulnerability signal {'present' if evidence.vulnerability_indicators.present else 'not present'} "
+            f"at {evidence.vulnerability_indicators.confidence:.2f} confidence",
+            f"overall confidence {evidence.overall_confidence:.2f}",
+        ]
+        rows.append(
+            {
+                "source_name": "Content analysis",
+                "source_type": "content_analysis",
+                "evidence_checked": "PII, special-category indicators, vulnerability signal, confidence",
+                "value": "; ".join(content_signals),
+                "status": "derived" if evidence.evaluated and not evidence.sensor_error else "unavailable",
+                "demo_note": (
+                    "Semantic evidence only; the policy engine makes the binding decision. "
+                    "The vulnerability classifier is a clearly labelled deterministic demo stub."
+                ),
+            }
+        )
+        rows.append(
+            {
+                "source_name": "Disclosure basis",
+                "source_type": "fixture_disclosure_basis",
+                "evidence_checked": "recipient domain, external recipient, approved disclosure basis",
+                "value": (
+                    f"{context.recipient.domain or 'unknown domain'}; "
+                    f"{'external' if context.recipient.is_external else 'internal'} recipient; "
+                    f"{'approved disclosure basis' if context.recipient.approved_disclosure_basis else 'no approved disclosure basis'}"
+                ),
+                "status": "available" if context.context_resolution_ok else "unavailable",
+                "demo_note": _fixture_note(
+                    "disclosure_basis",
+                    "Used to assess whether external disclosure controls should escalate the action.",
+                ),
+            }
+        )
+
+    rows.append(
+        {
+            "source_name": "Policy engine",
+            "source_type": "policy_engine",
+            "evidence_checked": "resolved context, bounded evidence, configured controls and thresholds",
+            "value": decision.decision.value,
+            "status": "derived",
+            "demo_note": (
+                "Deterministic policy decision. The model is not the judge; semantic components only provide bounded evidence."
+            ),
+        }
+    )
+    return rows
+
+
 def _action_text(action: Action) -> str:
     if action.content is not None:
         return action.content
@@ -573,6 +716,7 @@ def _build_decision_view_context(scenario_id: int, result: PipelineResult) -> di
         "framework_mappings": decision.framework_mappings,
         "threshold_used": decision.threshold_used,
         "context_rows": _build_context_rows(action, context),
+        "evidence_source_rows": _build_evidence_source_rows(action, context, evidence, decision),
         "semantic_evaluated": semantic_evaluated,
         "highlighted_body": _render_highlighted_text(body_text, evidence.evidence_spans),
         "entities": evidence.detected_entities,

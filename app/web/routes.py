@@ -48,6 +48,25 @@ templates.env.globals["pending_escalation_count"] = lambda: _pending_escalation_
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
+
+def _event_feed_js_version() -> str:
+    """Return a cache-busting token for the live-feed JavaScript asset.
+
+    The live-feed template can change independently of the browser-cached
+    static asset. Keying the script URL by the file mtime ensures browsers ask
+    for a fresh `/static/event_feed.js` whenever this file changes, preventing
+    a fresh template from being paired with stale pre-terminal JavaScript.
+    """
+
+    script_path = STATIC_DIR / "event_feed.js"
+    return str(int(script_path.stat().st_mtime))
+
+
+def _event_feed_template_context(**extra: Any) -> dict[str, Any]:
+    context = {"event_feed_js_version": _event_feed_js_version()}
+    context.update(extra)
+    return context
+
 CONTROLS_PATH = Path(__file__).resolve().parents[2] / "opa" / "data" / "controls.json"
 
 # Plain-English board labels for the internal decision tiers (spec §6 / §8A item 1).
@@ -300,7 +319,7 @@ def event_feed_index(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(
         request,
         EVENT_FEED_TEMPLATE,
-        {"cards": _event_feed_cards(), "scenario_id": None, "scenario_title": None},
+        _event_feed_template_context(cards=_event_feed_cards(), scenario_id=None, scenario_title=None),
     )
 
 
@@ -366,23 +385,23 @@ def event_feed_for_scenario(request: Request, scenario_id: int, correlation_id: 
         return templates.TemplateResponse(
             request,
             EVENT_FEED_TEMPLATE,
-            {
-                "cards": _event_feed_cards(),
-                "scenario_id": None,
-                "scenario_title": None,
-                "stored_trace": stored_trace,
-            },
+            _event_feed_template_context(
+                cards=_event_feed_cards(),
+                scenario_id=None,
+                scenario_title=None,
+                stored_trace=stored_trace,
+            ),
         )
 
     return templates.TemplateResponse(
         request,
         EVENT_FEED_TEMPLATE,
-        {
-            "cards": _event_feed_cards(),
-            "scenario_id": scenario_id,
-            "scenario_title": _scenario_title(scenario_id),
-            "stored_trace": None,
-        },
+        _event_feed_template_context(
+            cards=_event_feed_cards(),
+            scenario_id=scenario_id,
+            scenario_title=_scenario_title(scenario_id),
+            stored_trace=None,
+        ),
     )
 
 

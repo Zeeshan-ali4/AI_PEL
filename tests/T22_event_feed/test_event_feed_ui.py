@@ -10,7 +10,7 @@ def test_event_feed_page_loads_and_references_static_eventsource_js(wired_pipeli
     response = client.get("/events/3")
     assert response.status_code == 200
     html = response.text
-    assert "/static/event_feed.js" in html
+    assert "/static/event_feed.js?v=" in html
     assert 'data-stream-url="/run/3/stream"' in html
     assert "event-feed-list" in html
     assert "trace" in html.lower()
@@ -26,6 +26,15 @@ def test_event_feed_page_loads_and_references_static_eventsource_js(wired_pipeli
     assert "decision-allow" in body
     assert "decision-warn" in body
     assert "decision-block" in body
+    assert "event-feed-terminal-body" in html
+    assert "Connecting to " in body
+
+
+def test_event_feed_script_src_is_cache_busted(wired_pipeline):
+    client = TestClient(app)
+    response = client.get("/events/3")
+    assert response.status_code == 200
+    assert 'src="/static/event_feed.js?v=' in response.text
 
 
 def test_event_feed_is_discoverable_from_primary_nav_and_scenario_cards(wired_pipeline):

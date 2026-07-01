@@ -77,6 +77,38 @@
     return div.innerHTML;
   }
 
+  function padNumber(value, width) {
+    const text = String(value);
+    return text.length >= width ? text : "0".repeat(width - text.length) + text;
+  }
+
+  function padLabel(value, width) {
+    const text = String(value);
+    return text.length >= width ? text : text + " ".repeat(width - text.length);
+  }
+
+  function appendTerminalLine(terminalBody, text, className) {
+    if (terminalBody.childNodes.length > 0) {
+      terminalBody.appendChild(document.createTextNode("\n"));
+    }
+    const line = document.createElement("span");
+    line.className = className;
+    line.textContent = text;
+    terminalBody.appendChild(line);
+    terminalBody.scrollTop = terminalBody.scrollHeight;
+  }
+
+  function appendTerminalEvent(terminalBody, payload) {
+    const index = payload.is_focal ? "FOCAL" : padNumber(payload.event_index, 2);
+    const text =
+      "[" + index + "/" + payload.total_events + "] " +
+      padLabel(payload.decision.toUpperCase(), 10) +
+      payload.action_summary +
+      (payload.control_id ? " (" + payload.control_id + ")" : "");
+    const className = "terminal-line " + badgeClass(payload.decision) + (payload.is_focal ? " terminal-line-focal" : "");
+    appendTerminalLine(terminalBody, text, className);
+  }
+
   function init() {
     const section = document.getElementById("event-feed-section");
     if (!section) {
@@ -84,15 +116,26 @@
     }
     const list = document.getElementById("event-feed-list");
     const statusEl = document.getElementById("event-feed-status");
+    const terminalBody = document.getElementById("event-feed-terminal-body");
     const streamUrl = section.dataset.streamUrl;
+
+    if (terminalBody) {
+      appendTerminalLine(terminalBody, "Connecting to " + streamUrl + " ...", "terminal-line terminal-line-status");
+    }
 
     const source = new EventSource(streamUrl);
 
     source.onmessage = function (event) {
       const payload = JSON.parse(event.data);
+      if (terminalBody) {
+        appendTerminalEvent(terminalBody, payload);
+      }
       if (payload.is_focal) {
         list.appendChild(renderFocalRow(payload));
         statusEl.textContent = "Focal event landed: " + payload.decision + (payload.control_id ? " (" + payload.control_id + ")" : "") + ".";
+        if (terminalBody) {
+          appendTerminalLine(terminalBody, "-- pipeline complete --", "terminal-line terminal-line-status");
+        }
         source.close();
       } else {
         list.appendChild(renderBackgroundRow(payload));
@@ -102,6 +145,9 @@
 
     source.onerror = function () {
       statusEl.textContent = "Live feed connection closed.";
+      if (terminalBody) {
+        appendTerminalLine(terminalBody, "-- connection closed --", "terminal-line terminal-line-status");
+      }
       source.close();
     };
   }

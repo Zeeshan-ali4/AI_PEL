@@ -486,7 +486,7 @@ This phase exists for one reason: a Head of Risk and Assurance does not just wan
 - **Estimate:** 0.5 day.
 
 ## T30 — Reporting dashboard summary view (backlog, not scheduled)
-- **Status:** Backlog
+- **Status:** Done
 - **Goal:** A separate aggregate view, distinct from the per-record evidence shown in T26–T29, that rolls records up into the kind of period summary a Head of Risk would actually present upward or to a regulator: total actions evaluated, breakdown by decision and control, count of escalations with linked human decisions vs pending, and a chain-integrity verification timestamp for the period. This moves the demo from "look at one record" to "look at your reporting posture" — but it's a materially bigger piece of work than T26–T29 and isn't needed for the current demo script.
 - **Depends on:** T28, T29 (consumes their output)
 - **Spec refs:** none yet — would need a short spec addendum before scheduling

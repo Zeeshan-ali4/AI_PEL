@@ -5,6 +5,10 @@
 - `TASK_LEDGER.md`: T21 — README + demo script (narration), including the ten required beats in order, the three ledger-authorised demo-support additions, the `Done when` criteria, and the T21 Verify step.
 - `briefs/T21_architect_brief.md`: required README/script content, allowed files, non-negotiable scenario outcomes, real-vs-stubbed honesty list, shadow-mode/fail-closed requirements, and the requirement for real pytest checks covering docs plus any T21 runtime/template additions.
 
+## Dependency confirmation
+- T21 dependencies are marked `Done` in `TASK_LEDGER.md`: T19, T22, T23, T24, and T25.
+- PM/BA scope is limited to T21 functional/acceptance coverage; this brief does not authorise starting T20 or any Phase 5/backlog task.
+
 ## Target test location
 - Folder: `tests/T21_readme_demo/`
 - Suggested files:
@@ -12,7 +16,9 @@
   - `tests/T21_readme_demo/test_readme_content.py` — README structure, run instructions, architecture, honesty list, scenario table, threshold/audit semantics.
   - `tests/T21_readme_demo/test_demo_script_content.py` — spoken narration, value pillars, ten-beat order, scenario walkthroughs, threshold/audit/fail-closed moments, sensitivity constraints.
   - `tests/T21_readme_demo/test_cross_doc_consistency.py` — README/DEMO_SCRIPT/spec consistency, port/URL consistency, no prohibited framing, illustrative-mapping caveats.
-  - `tests/T21_readme_demo/test_demo_support_behaviour.py` — acceptance checks for any T21 runtime/template additions that are missing and therefore implemented: dashboard aggregate stats, shadow-mode callout, and one-shot OPA failure simulation.
+  - `tests/T21_readme_demo/test_dashboard_aggregate_stats.py` — dashboard aggregate stats render/update acceptance checks for T21 beat 1.
+  - `tests/T21_readme_demo/test_shadow_mode_callout.py` — shadow-mode decision callout acceptance checks for T21 beat 6.
+  - `tests/T21_readme_demo/test_fail_closed_simulation.py` — one-shot policy-engine failure and auto-reset acceptance checks for T21 beat 10.
 
 ## Test cases
 

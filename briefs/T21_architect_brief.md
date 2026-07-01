@@ -15,7 +15,7 @@ T21's ledger file list names only:
 - `README.md`
 - `DEMO_SCRIPT.md`
 
-The ledger also explicitly says the following three minor additions are to be implemented during T21 if not already present. To avoid silent scope drift, the Implementer must first inspect whether each capability already exists. If it already exists, do not touch its code. If it is missing, the T21 ledger text authorises the minimum necessary edits to the existing files that own that behaviour:
+The ledger also explicitly says the following three minor additions are to be implemented during T21 if not already present. To avoid silent scope drift, the Implementer must first inspect whether each capability already exists. If it already exists, do not touch its code; document the existing owner in the handoff. If it is missing, the T21 ledger text authorises only the minimum necessary edits to the existing files that already own that behaviour:
 - Dashboard aggregate stats cards: likely `app/web/routes.py`, `app/web/templates/dashboard.html`, and the PM/BA-specified test files under `tests/T21_readme_demo/`.
 - Shadow-mode decision callout: likely the existing decision/record/event-feed template that renders decisions, plus `tests/T21_readme_demo/`.
 - One-shot OPA failure simulation: likely `app/settings_store.py`, `app/opa_client.py`, `app/web/routes.py`, one existing settings or event-feed template, and `tests/T21_readme_demo/`.
@@ -48,13 +48,14 @@ Produce the final public-facing README and spoken demo narration for the Head-of
 - Fail-closed simulation must be one-shot and auto-reset. It must not require stopping OPA for the whole demo and must not create a persistent unsafe failure mode.
 - Do not use Horizon as a hook, do not mention Horizon, and do not cite Horizon Inquiry recommendation numbers.
 - Label framework mappings as illustrative/demo mappings, not certified production mappings.
-- Tests must include real pytest checks for README/script content and any T21 code additions. Documentation-only inline checks are not enough.
+- Tests must include real pytest checks for README/script content and any T21 code additions or pre-existing support behaviours relied on by the script. Documentation-only inline checks are not enough.
 
 ## Verify step
 From `TASK_LEDGER.md`: follow the README on a clean checkout; run the demo from the script, hitting every beat; confirm shadow mode renders clearly; confirm fail-closed simulation works and auto-resets; confirm aggregate stats update after running scenarios.
 
 Minimum programmatic checks for Implementer/QA:
 - `docker compose run --rm app pytest -q tests/T21_readme_demo`
+- `python -m pytest -q tests/T21_readme_demo` may be used as a faster local smoke check when dependencies are already installed, but the Docker command remains the ledger-aligned check.
 - If T21 touches runtime code, also run the relevant existing focused tests for the touched areas and, where practical, `docker compose run --rm app pytest -q`.
 
 Manual demo verification checklist:

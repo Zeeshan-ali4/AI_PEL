@@ -169,6 +169,162 @@ class AuditStore:
         self._ensure_table()
         return [self._row_to_record(row) for row in self._fetch_all_rows()]
 
+    def read_action_evals_since(self, cutoff: datetime | None) -> list[EvidenceRecord]:
+        """Return action_evaluation records at or after cutoff (DB-level WHERE clause)."""
+        self._ensure_table()
+        if self._uses_sqlite:
+            if cutoff is not None:
+                sql = (
+                    "SELECT id, correlation_id, action, context_used, evidence, decision,"
+                    " enforcement_mode, executed, record_type, references_hash,"
+                    " human_approver, approval_reason, created_at, record_hash, prev_hash,"
+                    " evidence_schema_version"
+                    " FROM audit_records"
+                    " WHERE record_type = ? AND created_at >= ?"
+                    " ORDER BY id ASC"
+                )
+                params: tuple = ("action_evaluation", cutoff.isoformat())
+            else:
+                sql = (
+                    "SELECT id, correlation_id, action, context_used, evidence, decision,"
+                    " enforcement_mode, executed, record_type, references_hash,"
+                    " human_approver, approval_reason, created_at, record_hash, prev_hash,"
+                    " evidence_schema_version"
+                    " FROM audit_records"
+                    " WHERE record_type = ?"
+                    " ORDER BY id ASC"
+                )
+                params = ("action_evaluation",)
+            with self._sqlite_connection() as conn:
+                rows = conn.execute(sql, params).fetchall()
+            return [self._row_to_record(self._sqlite_row_to_dict(row)) for row in rows]
+
+        if cutoff is not None:
+            sql_pg = (
+                "SELECT id, correlation_id, action, context_used, evidence, decision,"
+                " enforcement_mode, executed, record_type, references_hash,"
+                " human_approver, approval_reason, created_at, record_hash, prev_hash,"
+                " evidence_schema_version"
+                " FROM audit_records"
+                " WHERE record_type = %s AND created_at >= %s"
+                " ORDER BY id ASC"
+            )
+            pg_params: list = ["action_evaluation", cutoff]
+        else:
+            sql_pg = (
+                "SELECT id, correlation_id, action, context_used, evidence, decision,"
+                " enforcement_mode, executed, record_type, references_hash,"
+                " human_approver, approval_reason, created_at, record_hash, prev_hash,"
+                " evidence_schema_version"
+                " FROM audit_records"
+                " WHERE record_type = %s"
+                " ORDER BY id ASC"
+            )
+            pg_params = ["action_evaluation"]
+        with self._postgres_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(sql_pg, pg_params)
+                rows = cur.fetchall()
+        return [self._row_to_record(self._postgres_row_to_dict(row)) for row in rows]
+
+    def read_pending_escalations(self, cutoff: datetime | None) -> list[EvidenceRecord]:
+        """Return escalation records with no matching approval_decision (NOT EXISTS subquery)."""
+        self._ensure_table()
+        if self._uses_sqlite:
+            cutoff_clause = " AND ae.created_at >= ?" if cutoff is not None else ""
+            params_list: list = []
+            if cutoff is not None:
+                params_list.append(cutoff.isoformat())
+            sql = (
+                "SELECT ae.id, ae.correlation_id, ae.action, ae.context_used, ae.evidence,"
+                " ae.decision, ae.enforcement_mode, ae.executed, ae.record_type,"
+                " ae.references_hash, ae.human_approver, ae.approval_reason, ae.created_at,"
+                " ae.record_hash, ae.prev_hash, ae.evidence_schema_version"
+                " FROM audit_records ae"
+                " WHERE ae.record_type = 'action_evaluation'"
+                f"  AND json_extract(ae.decision, '$.decision') = 'escalate'"
+                f"{cutoff_clause}"
+                "  AND NOT EXISTS ("
+                "    SELECT 1 FROM audit_records appr"
+                "    WHERE appr.record_type = 'approval_decision'"
+                "      AND appr.correlation_id = ae.correlation_id"
+                "  )"
+                " ORDER BY ae.id ASC"
+            )
+            with self._sqlite_connection() as conn:
+                rows = conn.execute(sql, params_list).fetchall()
+            return [self._row_to_record(self._sqlite_row_to_dict(row)) for row in rows]
+
+        pg_cutoff_clause = "AND ae.created_at >= %s" if cutoff is not None else ""
+        pg_params_list: list = []
+        if cutoff is not None:
+            pg_params_list.append(cutoff)
+        sql_pg = (
+            "SELECT ae.id, ae.correlation_id, ae.action, ae.context_used, ae.evidence,"
+            " ae.decision, ae.enforcement_mode, ae.executed, ae.record_type,"
+            " ae.references_hash, ae.human_approver, ae.approval_reason, ae.created_at,"
+            " ae.record_hash, ae.prev_hash, ae.evidence_schema_version"
+            " FROM audit_records ae"
+            " WHERE ae.record_type = 'action_evaluation'"
+            f"  AND ae.decision->>'decision' = 'escalate'"
+            f"  {pg_cutoff_clause}"
+            "  AND NOT EXISTS ("
+            "    SELECT 1 FROM audit_records appr"
+            "    WHERE appr.record_type = 'approval_decision'"
+            "      AND appr.correlation_id = ae.correlation_id"
+            "  )"
+            " ORDER BY ae.id ASC"
+        )
+        with self._postgres_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(sql_pg, pg_params_list)
+                rows = cur.fetchall()
+        return [self._row_to_record(self._postgres_row_to_dict(row)) for row in rows]
+
+    def read_resolved_escalation_count(self, cutoff: datetime | None) -> int:
+        """Count escalation records that have a matching approval_decision (EXISTS subquery)."""
+        self._ensure_table()
+        if self._uses_sqlite:
+            cutoff_clause = " AND ae.created_at >= ?" if cutoff is not None else ""
+            params_list: list = []
+            if cutoff is not None:
+                params_list.append(cutoff.isoformat())
+            sql = (
+                "SELECT COUNT(*)"
+                " FROM audit_records ae"
+                " WHERE ae.record_type = 'action_evaluation'"
+                f"  AND json_extract(ae.decision, '$.decision') = 'escalate'"
+                f"{cutoff_clause}"
+                "  AND EXISTS ("
+                "    SELECT 1 FROM audit_records appr"
+                "    WHERE appr.record_type = 'approval_decision'"
+                "      AND appr.correlation_id = ae.correlation_id"
+                "  )"
+            )
+            with self._sqlite_connection() as conn:
+                return int(conn.execute(sql, params_list).fetchone()[0])
+
+        pg_cutoff_clause = "AND ae.created_at >= %s" if cutoff is not None else ""
+        pg_params_list: list = []
+        if cutoff is not None:
+            pg_params_list.append(cutoff)
+        sql_pg = (
+            "SELECT COUNT(*)"
+            " FROM audit_records ae"
+            " WHERE ae.record_type = 'action_evaluation'"
+            f"  AND ae.decision->>'decision' = 'escalate'"
+            f"  {pg_cutoff_clause}"
+            "  AND EXISTS ("
+            "    SELECT 1 FROM audit_records appr"
+            "    WHERE appr.record_type = 'approval_decision'"
+            "      AND appr.correlation_id = ae.correlation_id"
+            "  )"
+        )
+        with self._postgres_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(sql_pg, pg_params_list)
+                return int(cur.fetchone()[0])
+
     def verify_chain(self) -> ChainVerificationResult:
         """Recompute each row's expected hash and linkage; report the first break, if any."""
 

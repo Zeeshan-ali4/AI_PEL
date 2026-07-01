@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+
+{% set active_nav = "reporting" %}
+{% block title %}Reporting — AI PEL Assurance Gate{% endblock %}
+
+{% block content %}
+<a href="/" class="back-link">&larr; Back to control dashboard</a>
+
+<section class="intro">
+  <h1>Reporting dashboard</h1>
+  <p>
+    Period-level summary of the gate's activity — the view a Head of Risk presents
+    upward or to a regulator. Every figure on this page is derived from the live,
+    tamper-evident audit store; nothing is estimated or interpolated.
+  </p>
+  <p class="eyebrow">Illustrative period summary — covers actions evaluated by this demo deployment.</p>
+</section>
+
+{# Period selector #}
+<section class="card" style="margin-bottom: 1.25rem;">
+  <form method="get" action="/reporting" style="display: flex; align-items: center; gap: 1rem;">
+    <label for="period-select" style="font-weight: 500; white-space: nowrap;">Reporting period:</label>
+    <select id="period-select" name="period" onchange="this.form.submit()" class="input-field" style="width: auto;">
+      <option value="today" {% if report.period == "today" %}selected{% endif %}>Today</option>
+      <option value="7d" {% if report.period == "7d" %}selected{% endif %}>Last 7 days</option>
+      <option value="30d" {% if report.period == "30d" %}selected{% endif %}>Last 30 days</option>
+      <option value="all" {% if report.period == "all" %}selected{% endif %}>All time</option>
+    </select>
+  </form>
+</section>
+
+{% if chain_ok is not none %}
+  {% if chain_ok %}
+  <div class="banner banner-success" role="status">
+    <strong>Chain intact</strong>
+    <p>{{ chain_count }} record{{ "s" if chain_count != 1 else "" }} verified — every hash and link matches what was originally written.</p>
+  </div>
+  {% else %}
+  <div class="banner banner-error" role="status">
+    <strong>Chain integrity — tampering detected</strong>
+    <p>Verification failed at record <span class="mono">id {{ chain_broken_at }}</span>.</p>
+  </div>
+  {% endif %}
+{% endif %}
+
+{# ── 1. Summary cards ──────────────────────────────────────────────── #}
+<section class="stat-grid" aria-label="Period KPI summary">
+  <article class="stat-card stat-card-blue">
+    <span class="stat-label">Total evaluated</span>
+    <strong class="stat-value">{{ report.summary.total_evaluated }}</strong>
+    <span class="stat-note">actions through the gate</span>
+  </article>
+
+  <article class="stat-card">
+    <span class="stat-label">Allowed</span>
+    <strong class="stat-value">{{ report.summary.total_allowed }}</strong>
+    <span class="stat-note">allow + allow_with_logging</span>
+  </article>
+
+  <article class="stat-card stat-card-amber">
+    <span class="stat-label">Escalated to a human</span>
+    <strong class="stat-value">{{ report.summary.total_escalated }}</strong>
+    <span class="stat-note">held — named human required</span>
+  </article>
+
+  <article class="stat-card stat-card-red">
+    <span class="stat-label">Blocked / fail-closed</span>
+    <strong class="stat-value">{{ report.summary.total_blocked }}</strong>
+    <span class="stat-note">block + fail_closed</span>
+  </article>
+</section>
+
+{# ── 2. Decision breakdown ─────────────────────────────────────────── #}
+<section class="card">
+  <h2>Decision breakdown</h2>
+  {% if report.decision_breakdown %}
+  <table class="data-table" aria-label="Decision type breakdown">
+    <thead>
+      <tr>
+        <th>Decision</th>
+        <th class="col-num">Count</th>
+        <th class="col-num">% of total</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in report.decision_breakdown %}
+      <tr>
+        <td>
+          {% if row.decision == "allow" %}
+          <span class="badge decision-allow">Allow</span>
+          {% elif row.decision == "allow_with_logging" %}
+          <span class="badge decision-info">Allow, with logging</span>
+          {% elif row.decision == "escalate" %}
+          <span class="badge decision-warn">Escalate</span>
+          {% elif row.decision == "block" %}
+          <span class="badge decision-block">Block</span>
+          {% elif row.decision == "fail_closed" %}
+          <span class="badge decision-block">Fail closed</span>
+          {% else %}
+          <span class="badge">{{ row.decision }}</span>
+          {% endif %}
+        </td>
+        <td class="col-num">{{ row.count }}</td>
+        <td class="col-num">{{ row.percentage }}%</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="text-soft">No actions evaluated in this period.</p>
+  {% endif %}
+</section>
+
+{# ── 3. Control activity ───────────────────────────────────────────── #}
+<section class="card">
+  <h2>Control activity</h2>
+  {% if report.control_activity %}
+  <table class="data-table" aria-label="Controls that fired in the period">
+    <thead>
+      <tr>
+        <th>Control</th>
+        <th>Name</th>
+        <th>Tier</th>
+        <th class="col-num">Times fired</th>
+        <th>Most recent</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in report.control_activity %}
+      <tr>
+        <td class="mono">{{ row.control_id }}</td>
+        <td>{{ row.name }}</td>
+        <td>
+          {% if row.tier == "prohibited" %}
+          <span class="badge decision-block">Prohibited</span>
+          {% elif row.tier == "escalate" %}
+          <span class="badge decision-warn">Escalate</span>
+          {% elif row.tier == "allow_with_logging" %}
+          <span class="badge decision-info">Log</span>
+          {% else %}
+          <span class="badge">{{ row.tier }}</span>
+          {% endif %}
+        </td>
+        <td class="col-num">{{ row.count }}</td>
+        <td style="color: var(--text-soft); font-size: 0.875rem;">
+          {% if row.most_recent %}
+          {{ row.most_recent.strftime("%Y-%m-%d %H:%M UTC") }}
+          {% else %}
+          —
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="text-soft">No controls fired in this period.</p>
+  {% endif %}
+</section>
+
+{# ── 4. Escalation resolution ─────────────────────────────────────── #}
+<section class="card">
+  <h2>Escalation resolution</h2>
+  <div class="stat-grid" style="margin-bottom: 1rem;" aria-label="Escalation resolution summary">
+    <article class="stat-card">
+      <span class="stat-label">Resolved</span>
+      <strong class="stat-value">{{ report.escalation_summary.resolved }}</strong>
+      <span class="stat-note">human decision recorded</span>
+    </article>
+    <article class="stat-card stat-card-amber">
+      <span class="stat-label">Pending</span>
+      <strong class="stat-value">{{ report.escalation_summary.pending }}</strong>
+      <span class="stat-note">awaiting a human decision</span>
+    </article>
+  </div>
+
+  {% if report.escalation_summary.pending_items %}
+  <h3 style="margin-bottom: 0.5rem;">Pending escalations</h3>
+  <table class="data-table" aria-label="Pending escalations requiring human decision">
+    <thead>
+      <tr>
+        <th>Correlation ID</th>
+        <th>Action</th>
+        <th>Required role</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in report.escalation_summary.pending_items %}
+      <tr>
+        <td class="mono" style="font-size: 0.8rem;">{{ item.correlation_id[:16] }}…</td>
+        <td>{{ item.action_summary }}</td>
+        <td>{{ item.required_approval_role or "—" }}</td>
+        <td><a href="/approvals" class="btn btn-sm">Review</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% elif report.escalation_summary.resolved == 0 and report.escalation_summary.pending == 0 %}
+  <p class="text-soft">No escalations in this period.</p>
+  {% else %}
+  <p class="text-soft" style="color: var(--green);">All escalations in this period have been resolved.</p>
+  {% endif %}
+</section>
+
+{# ── 5. Chain integrity ────────────────────────────────────────────── #}
+<section class="card">
+  <h2>Chain-integrity status</h2>
+  <p>
+    The audit store is hash-chained: every record links to the one before it by
+    SHA-256. "Verify now" recomputes every hash from scratch and reports whether
+    the chain has been altered since it was written.
+  </p>
+
+  {% if report.chain_status %}
+    {% if report.chain_status.intact %}
+    <div class="banner banner-success" role="status" style="margin: 0.75rem 0;">
+      <strong>Chain intact</strong>
+      <p>{{ report.chain_status.verified_count }} record{{ "s" if report.chain_status.verified_count != 1 else "" }} verified — no tampering detected.</p>
+    </div>
+    {% else %}
+    <div class="banner banner-error" role="status" style="margin: 0.75rem 0;">
+      <strong>Chain broken — tampering detected</strong>
+      <p>Failed at record <span class="mono">id {{ report.chain_status.broken_record_id }}</span>. Reason: {{ report.chain_status.broken_reason }}</p>
+    </div>
+    {% endif %}
+  {% else %}
+  <p class="text-soft">No verification has been run in this session. Click "Verify now" to check.</p>
+  {% endif %}
+
+  <form method="get" action="/reporting/verify" style="margin-top: 0.875rem;">
+    <button type="submit" class="btn btn-primary">Verify now</button>
+  </form>
+  <p class="eyebrow" style="margin-top: 0.5rem;">This runs across the full audit store, not scoped to the selected period.</p>
+</section>
+{% endblock %}

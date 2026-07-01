@@ -17,8 +17,9 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Stre
 from fastapi.templating import Jinja2Templates
 
 from app.audit.models import GENESIS_PREV_HASH
+from app.audit.reporting import DEFAULT_PERIOD, VALID_PERIODS, get_report
 from app.audit.sufficiency import build_sufficiency_checklist
-from app.audit.store import _hash_payload
+from app.audit.store import ChainVerificationResult, _hash_payload
 from app.context import resolver as context_resolver
 from app.normaliser.normaliser import normalise
 from app.pipeline import PipelineResult, UnknownScenarioError, get_pipeline
@@ -1143,3 +1144,73 @@ def simulate_opa_failure_once() -> RedirectResponse:
 
     get_pipeline().settings_store.arm_opa_failure_simulation()
     return RedirectResponse(url="/settings?saved=opa_failure", status_code=status.HTTP_303_SEE_OTHER)
+
+
+# ── T30 — Reporting dashboard ──────────────────────────────────────────────
+
+
+@router.get("/reporting", response_class=HTMLResponse)
+def reporting_page(
+    request: Request,
+    period: str = DEFAULT_PERIOD,
+    chain_ok: str | None = None,
+    chain_count: int | None = None,
+    chain_broken_at: int | None = None,
+) -> HTMLResponse:
+    """Render the T30 period-level reporting summary (spec §8B).
+
+    chain_ok / chain_count / chain_broken_at are populated by the
+    /reporting/verify redirect so the result persists across the redirect
+    without introducing server-side session state.
+    """
+    if period not in VALID_PERIODS:
+        period = DEFAULT_PERIOD
+
+    # chain_ok comes in as a string query param; parse to bool or None.
+    parsed_chain_ok: bool | None = None
+    if chain_ok == "true":
+        parsed_chain_ok = True
+    elif chain_ok == "false":
+        parsed_chain_ok = False
+
+    chain_status = None
+    if parsed_chain_ok is not None:
+        chain_status = ChainVerificationResult(
+            intact=parsed_chain_ok,
+            verified_count=chain_count or 0,
+            broken_record_id=None if parsed_chain_ok else chain_broken_at,
+            broken_reason=None if parsed_chain_ok else "record_hash mismatch",
+        )
+
+    pipeline = get_pipeline()
+    controls_data = json.loads(CONTROLS_PATH.read_text())
+    report = get_report(pipeline.audit_store, period, controls_data, chain_status=chain_status)
+
+    return templates.TemplateResponse(
+        request,
+        "reporting.html",
+        {
+            "report": report,
+            "chain_ok": parsed_chain_ok,
+            "chain_count": chain_count,
+            "chain_broken_at": chain_broken_at,
+        },
+    )
+
+
+@router.get("/reporting/verify")
+def reporting_verify() -> RedirectResponse:
+    """Run verify_chain() and redirect to /reporting with the result in query params.
+
+    The 'Verify now' button is a GET form so no POST endpoint is needed.
+    """
+    result = get_pipeline().audit_store.verify_chain()
+    if result.intact:
+        return RedirectResponse(
+            url=f"/reporting?chain_ok=true&chain_count={result.verified_count}",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+    return RedirectResponse(
+        url=f"/reporting?chain_ok=false&chain_broken_at={result.broken_record_id}",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )

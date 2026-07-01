@@ -1,17 +1,21 @@
 # Master Spec — Runtime Policy Enforcement Gate for AI Agent Actions (Demo Build)
 
-**Status:** v1.2 — source of truth for the demo. Supersedes v1.1.
+**Status:** v1.3 — source of truth for the demo. Supersedes v1.2.
 **Audience for the demo artifact:** the **Head of Risk and Assurance**. The build is optimised to *demonstrate assurance* — visible human oversight, reliable evidence, and provable control operation — not engineering depth. Parts that are easy to fake (PII detection, the policy engine, the audit chain) are built for real, because faking them undermines the exact assurance claims the product makes.
 
 Both Claude Code (architect/reviewer) and Codex (implementer) consume this document. Do not deviate from the schemas, file layout, or control logic here without updating this file first.
 
 ---
 
-## 0. Changes in v1.2 (read first if you saw v1.1)
+## 0. Changes in v1.3 (read first if you saw v1.2)
+
+- **T30:** Added reporting page spec (§8B): five-section KPI dashboard at `/reporting` with a period selector (today / 7d / 30d / all) and chain-integrity status passthrough. Period filtering is enforced at DB level (WHERE clause or subquery) — not in-memory list comprehensions. Escalation resolution uses a NOT EXISTS subquery to distinguish pending from resolved. Added `app/audit/reporting.py` and `app/web/templates/reporting.html` to §10 file layout. Test suite split into two files per §10 convention: `tests/T30_reporting/test_reporting_data.py` (TC-01 – TC-09) and `tests/T30_reporting/test_reporting_routes.py` (TC-10 – TC-16). The `_update_created_at` test helper has been removed from `app/audit/store.py`; period-filter tests now back-date rows via a direct DB connection in the test file.
+
+## 0a. Changes in v1.2 (read first if you saw v1.1)
 
 - **T29:** Added `evidence_schema_version: str` field to `EvidenceRecord` (§5.5). This field is populated on every new audit record write using a module-level constant (`EVIDENCE_SCHEMA_VERSION = "1.0.0"`), surfaced on the record view and in audit package exports, and framed in `DEMO_SCRIPT.md` Beat 9 as a regulatory-reporting governance marker. No other schemas or policy logic are affected.
 
-## 0a. Changes in v1.1 (read first if you saw v1.0)
+## 0b. Changes in v1.1 (read first if you saw v1.0)
 
 - Audience set to Head of Risk & Assurance; value framing rewritten around **assurance** (§1, §1A).
 - **Decision precedence changed**: `block` is now reserved for a *clearly-prohibited / malicious* tier only. All other risk **escalates to a human**. (§6)
@@ -273,6 +277,35 @@ Accessibility/tone: large readable type, no jargon in primary copy, every stubbe
 
 ---
 
+## 8B. Reporting page (T30)
+
+Five display sections rendered at `GET /reporting`:
+
+1. **Period summary** — KPI cards: total evaluated, total allowed (allow + allow_with_logging), total escalated, total blocked (block + fail_closed) for the selected period.
+2. **Decision breakdown** — one row per decision type actually observed; zero-count rows omitted; percentage shown. Sorted alphabetically by decision value.
+3. **Control activity** — each triggered control in the period with count (descending) and most-recent timestamp; name and tier resolved from `controls.json`.
+4. **Escalation resolution** — resolved vs. pending count with a list of pending items (correlation_id, plain-English action summary, required approval role). An escalation is resolved when an `approval_decision` record with a matching `correlation_id` exists anywhere in the store (not scoped to the period). Resolution is determined by a `NOT EXISTS` subquery, not Python set membership over all rows.
+5. **Chain-integrity status** — optional; populated only when the page is loaded after a `GET /reporting/verify` call that redirects back with `chain_ok` / `chain_count` / `chain_broken_at` query params.
+
+**Period selector:** `today | 7d | 30d (default) | all`. Rendered as a `<select>` element in the page header; changing the value reloads the page with `?period=<value>`. Invalid values fall back silently to `DEFAULT_PERIOD = "30d"` — no 500.
+
+**DB-level filtering rule:** the period cutoff (`created_at >= cutoff`) MUST be applied as a SQL `WHERE` clause before row retrieval — not as a Python list comprehension over all rows returned by `store.read_records()`. Similarly, escalation resolution MUST use a SQL `EXISTS` / `NOT EXISTS` subquery (or equivalent `LEFT JOIN` with `IS NULL`), not a Python `in` / `not in` check over a set built from `read_records()`.
+
+**Acceptance criteria:**
+- `GET /reporting` returns 200 with all five sections present.
+- Period selector defaults to 30d when param absent; selecting another period scopes all counts.
+- Invalid period → 30d fallback, no 500.
+- `GET /reporting/verify` runs `verify_chain()` and redirects to `/reporting?chain_ok=true|false` with `chain_count=` or `chain_broken_at=` params; the chain-integrity section renders on the redirected page.
+- Pending escalation count updates to 0 after an `approval_decision` record is appended for that `correlation_id`.
+
+**File layout entries (see §10):**
+- `app/audit/reporting.py` — period aggregation logic; calls DB-level query methods on `AuditStore` rather than `read_records()`.
+- `app/web/templates/reporting.html` — Jinja2 template extending `base.html`.
+- `tests/T30_reporting/test_reporting_data.py` — TC-01 to TC-09 (aggregation logic, real SQLite store).
+- `tests/T30_reporting/test_reporting_routes.py` — TC-10 to TC-16 (HTTP routes via FastAPI TestClient + live OPA).
+
+---
+
 ## 9. "Log the gate, not the agent" — reframed as auditable surface
 
 Each run carries a fixed `agent_steps` count (simulated internal steps, e.g. 12–40) and increments `consequential_actions_gated` by 1. The dashboard shows a running tally and one line:
@@ -307,17 +340,21 @@ agent-policy-gate/
 │   ├── semantic/{presidio_sensor.py, nuance_stub.py, evidence_builder.py}
 │   ├── policy/opa_client.py
 │   ├── enforcement/{handler.py, approval_queue.py}
-│   ├── audit/{models.py, store.py}
+│   ├── audit/{models.py, store.py, reporting.py}
 │   ├── pipeline.py
 │   └── web/
 │       ├── routes.py
 │       ├── templates/{base.html, dashboard.html, scenarios.html, decision.html,
-│       │              approvals.html, record.html, audit.html, settings.html}
+│       │              approvals.html, record.html, audit.html, settings.html,
+│       │              reporting.html}
 │       └── static/
 ├── scenarios/scenarios.py
 └── tests/
     ├── __init__.py
     └── T<XX>_<feature>/        ← one subfolder per task; Implementer creates test files within
+        └── T30_reporting/
+            ├── test_reporting_data.py   ← TC-01 to TC-09 (aggregation logic)
+            └── test_reporting_routes.py ← TC-10 to TC-16 (HTTP routes)
 ```
 
 ---

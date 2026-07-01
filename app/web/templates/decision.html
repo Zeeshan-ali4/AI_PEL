@@ -50,6 +50,44 @@
 </section>
 
 <section class="card">
+  <h2>Evidence Sources</h2>
+  <p class="card-note">
+    Source-by-source view of the demo evidence used for this decision. Fixture-backed rows are
+    labelled as demo stand-ins for the enterprise systems that would normally supply this context.
+  </p>
+  <div class="table-shell" style="margin-top: 1rem; box-shadow: none; border: none;">
+    <div class="table-scroll">
+      <table class="data-table" aria-label="Evidence sources used for the decision">
+        <thead>
+          <tr>
+            <th>Source</th>
+            <th>Type</th>
+            <th>Evidence / field checked</th>
+            <th>Value or summary</th>
+            <th>Status</th>
+            <th>Demo note / why it matters</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in evidence_source_rows %}
+          <tr>
+            <td><strong style="color: var(--text);">{{ row.source_name }}</strong></td>
+            <td><span class="mono">{{ row.source_type }}</span></td>
+            <td>{{ row.evidence_checked }}</td>
+            <td>{{ row.value }}</td>
+            <td>
+              <span class="badge {% if row.status == 'available' %}badge-success{% elif row.status == 'unavailable' %}badge-danger{% else %}badge-neutral{% endif %}">{{ row.status }}</span>
+            </td>
+            <td class="card-note" style="margin: 0; min-width: 260px;">{{ row.demo_note }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="card">
   <h2>Evidence</h2>
   <p class="card-note">
     Evidence informs the policy engine; it is never the approval or blocking authority. The

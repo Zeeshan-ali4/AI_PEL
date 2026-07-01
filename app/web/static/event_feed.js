@@ -119,17 +119,23 @@
     const terminalBody = document.getElementById("event-feed-terminal-body");
     const streamUrl = section.dataset.streamUrl;
 
-    appendTerminalLine(terminalBody, "Connecting to " + streamUrl + " ...", "terminal-line terminal-line-status");
+    if (terminalBody) {
+      appendTerminalLine(terminalBody, "Connecting to " + streamUrl + " ...", "terminal-line terminal-line-status");
+    }
 
     const source = new EventSource(streamUrl);
 
     source.onmessage = function (event) {
       const payload = JSON.parse(event.data);
-      appendTerminalEvent(terminalBody, payload);
+      if (terminalBody) {
+        appendTerminalEvent(terminalBody, payload);
+      }
       if (payload.is_focal) {
         list.appendChild(renderFocalRow(payload));
         statusEl.textContent = "Focal event landed: " + payload.decision + (payload.control_id ? " (" + payload.control_id + ")" : "") + ".";
-        appendTerminalLine(terminalBody, "-- pipeline complete --", "terminal-line terminal-line-status");
+        if (terminalBody) {
+          appendTerminalLine(terminalBody, "-- pipeline complete --", "terminal-line terminal-line-status");
+        }
         source.close();
       } else {
         list.appendChild(renderBackgroundRow(payload));
@@ -139,7 +145,9 @@
 
     source.onerror = function () {
       statusEl.textContent = "Live feed connection closed.";
-      appendTerminalLine(terminalBody, "-- connection closed --", "terminal-line terminal-line-status");
+      if (terminalBody) {
+        appendTerminalLine(terminalBody, "-- connection closed --", "terminal-line terminal-line-status");
+      }
       source.close();
     };
   }

@@ -11,10 +11,9 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-import pytest
 
-from app.audit.reporting import DEFAULT_PERIOD, VALID_PERIODS, get_report
-from app.audit.store import AuditStore
+from app.audit.reporting import get_report
+from app.audit.store import AuditStore, ChainVerificationResult
 from app.schemas.audit import RecordType
 from tests.T12_audit.conftest import (
     sample_action,
@@ -239,11 +238,18 @@ def test_empty_state_returns_zero_counts_not_error(tmp_path):
     assert report["escalation_summary"]["pending"] == 0
 
 
-# ── TC-09: Invalid period falls back to default ───────────────────────────────
+# ── TC-09: Chain integrity status passthrough shape ──────────────────────────
 
-def test_invalid_period_falls_back_to_default(tmp_path):
+def test_chain_integrity_status_shape_is_returned(tmp_path):
     store = AuditStore(f"sqlite:///{tmp_path / 'audit.db'}")
     _write(store, decision="allow")
+    _write(store, decision="escalate")
+    _write(store, decision="block")
 
-    report = get_report(store, "xyz", _controls_data())
-    assert report["period"] == DEFAULT_PERIOD
+    verify_result = store.verify_chain()
+    report = get_report(store, "all", _controls_data(), chain_status=verify_result)
+
+    assert isinstance(report["chain_status"], ChainVerificationResult)
+    assert report["chain_status"].intact is True
+    assert report["chain_status"].verified_count >= 3
+    assert report["chain_status"].broken_record_id is None

@@ -7,6 +7,7 @@ is unavailable.
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import socket
 import subprocess
@@ -200,4 +201,7 @@ def test_pending_escalation_updates_after_approval(wired_pipeline):
 
     report_resp = client.get("/reporting?period=all")
     assert report_resp.status_code == 200
-    assert "Escalation resolution" in report_resp.text
+    page = report_resp.text
+    assert "Escalation resolution" in page
+    assert re.search(r"Resolved</span>\s*<strong[^>]*>1</strong>", page)
+    assert re.search(r"Pending</span>\s*<strong[^>]*>0</strong>", page)

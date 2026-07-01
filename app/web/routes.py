@@ -19,7 +19,7 @@ from fastapi.templating import Jinja2Templates
 from app.audit.models import GENESIS_PREV_HASH
 from app.audit.reporting import DEFAULT_PERIOD, VALID_PERIODS, get_report
 from app.audit.sufficiency import build_sufficiency_checklist
-from app.audit.store import _hash_payload
+from app.audit.store import ChainVerificationResult, _hash_payload
 from app.context import resolver as context_resolver
 from app.normaliser.normaliser import normalise
 from app.pipeline import PipelineResult, UnknownScenarioError, get_pipeline
@@ -1166,16 +1166,25 @@ def reporting_page(
     if period not in VALID_PERIODS:
         period = DEFAULT_PERIOD
 
-    pipeline = get_pipeline()
-    controls_data = json.loads(CONTROLS_PATH.read_text())
-    report = get_report(pipeline.audit_store, period, controls_data)
-
     # chain_ok comes in as a string query param; parse to bool or None.
     parsed_chain_ok: bool | None = None
     if chain_ok == "true":
         parsed_chain_ok = True
     elif chain_ok == "false":
         parsed_chain_ok = False
+
+    chain_status = None
+    if parsed_chain_ok is not None:
+        chain_status = ChainVerificationResult(
+            intact=parsed_chain_ok,
+            verified_count=chain_count or 0,
+            broken_record_id=None if parsed_chain_ok else chain_broken_at,
+            broken_reason=None if parsed_chain_ok else "record_hash mismatch",
+        )
+
+    pipeline = get_pipeline()
+    controls_data = json.loads(CONTROLS_PATH.read_text())
+    report = get_report(pipeline.audit_store, period, controls_data, chain_status=chain_status)
 
     return templates.TemplateResponse(
         request,

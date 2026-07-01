@@ -7,27 +7,90 @@
 <style>
   /* T22-local styling: this page is the only allowed template/static surface for
      the live feed, so the visible state colours live here and target the exact
-     classes emitted by event_feed.js. */
+     classes emitted by event_feed.js. Colours are drawn from the app's own dark
+     theme tokens (see styles.css :root) rather than light-mode pastels, so text
+     stays legible against the app's dark background at every point of every row. */
+  .event-feed-terminal {
+    background: #05090f;
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    margin-top: 1rem;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .event-feed-terminal-titlebar {
+    align-items: center;
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    gap: 0.4rem;
+    padding: 0.55rem 0.85rem;
+  }
+  .terminal-dot {
+    border-radius: 50%;
+    height: 0.6rem;
+    width: 0.6rem;
+  }
+  .terminal-dot-red { background: #ff5f56; }
+  .terminal-dot-amber { background: #ffbd2e; }
+  .terminal-dot-green { background: #27c93f; }
+  .event-feed-terminal-title {
+    color: var(--text-muted);
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.7rem;
+    margin-left: 0.4rem;
+  }
+  .event-feed-terminal-body {
+    font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.7875rem;
+    line-height: 1.7;
+    margin: 0;
+    max-height: 280px;
+    overflow-y: auto;
+    padding: 0.85rem 1rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .terminal-line { display: block; }
+  .terminal-line-index { color: var(--text-muted); }
+  .terminal-line.decision-allow,
+  .terminal-line.decision-info { color: var(--green); }
+  .terminal-line.decision-warn { color: var(--amber); }
+  .terminal-line.decision-block { color: var(--red); }
+  .terminal-line-focal { font-weight: 600; }
+  .terminal-line-status { color: var(--text-soft); font-style: italic; }
+  .terminal-cursor {
+    animation: blink-cursor 1s step-end infinite;
+    background: var(--green);
+    display: inline-block;
+    height: 1em;
+    margin-left: 0.15em;
+    vertical-align: text-bottom;
+    width: 0.5em;
+  }
+  @keyframes blink-cursor { 50% { opacity: 0; } }
+
   .event-feed-list {
     display: grid;
     gap: 0.75rem;
     margin-top: 1rem;
   }
   .event-row {
-    border: 2px solid rgba(15, 23, 42, 0.12);
+    border: 2px solid var(--line);
     border-radius: 1rem;
     padding: 0.85rem 1rem;
-    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+    box-shadow: var(--shadow);
   }
   .event-row-background {
-    background: linear-gradient(90deg, rgba(22, 163, 74, 0.18), rgba(240, 253, 244, 0.95));
-    border-color: rgba(22, 163, 74, 0.45);
-    color: #14532d;
+    background: rgba(var(--green-rgb), 0.07);
+    border-color: rgba(var(--green-rgb), 0.35);
+    color: var(--text);
     display: grid;
     grid-template-columns: auto 1fr auto;
     gap: 0.75rem;
     align-items: center;
   }
+  .event-row-background .event-row-index { color: var(--green); }
   .event-row-focal {
     border-width: 3px;
     padding: 0;
@@ -35,22 +98,26 @@
   }
   .event-row-focal.decision-allow,
   .event-row-focal.decision-info {
-    background: linear-gradient(135deg, rgba(22, 163, 74, 0.24), #f0fdf4);
-    border-color: #16a34a;
+    background: rgba(var(--green-rgb), 0.1);
+    border-color: var(--green);
   }
+  .event-row-focal.decision-allow .event-row-index,
+  .event-row-focal.decision-info .event-row-index { color: var(--green); }
   .event-row-focal.decision-warn {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.28), #fffbeb);
-    border-color: #d97706;
+    background: rgba(var(--amber-rgb), 0.1);
+    border-color: var(--amber);
   }
+  .event-row-focal.decision-warn .event-row-index { color: var(--amber); }
   .event-row-focal.decision-block {
-    background: linear-gradient(135deg, rgba(220, 38, 38, 0.28), #fef2f2);
-    border-color: #dc2626;
+    background: rgba(var(--red-rgb), 0.1);
+    border-color: var(--red);
   }
+  .event-row-focal.decision-block .event-row-index { color: var(--red); }
   .event-row-focal-summary {
     align-items: center;
     background: transparent;
     border: 0;
-    color: inherit;
+    color: var(--text);
     cursor: pointer;
     display: grid;
     font: inherit;
@@ -61,9 +128,10 @@
     width: 100%;
   }
   .event-row-index {
-    font-family: var(--font-mono, monospace);
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
     font-weight: 700;
   }
+  .event-row-summary { color: var(--text); }
   .event-badge {
     border-radius: 999px;
     color: #fff;
@@ -72,17 +140,18 @@
     text-transform: uppercase;
   }
   .event-badge.decision-allow,
-  .event-badge.decision-info { background: #15803d; }
+  .event-badge.decision-info { background: #157347; }
   .event-badge.decision-warn { background: #b45309; }
   .event-badge.decision-block { background: #b91c1c; }
   .trace-timeline {
-    border-top: 1px solid rgba(15, 23, 42, 0.16);
+    border-top: 1px solid var(--line);
     padding: 0.85rem 1rem 1rem;
   }
   .trace-stage-card {
-    background: rgba(255, 255, 255, 0.78);
-    border: 1px solid rgba(15, 23, 42, 0.12);
+    background: var(--surface);
+    border: 1px solid var(--line);
     border-radius: 0.8rem;
+    color: var(--text);
     margin-top: 0.65rem;
     padding: 0.75rem;
   }
@@ -90,6 +159,12 @@
     display: flex;
     justify-content: space-between;
     gap: 1rem;
+  }
+  .trace-stage-card pre {
+    color: var(--text);
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
   }
 </style>
 
@@ -158,6 +233,16 @@
     Routine background events stream in first as compact rows, then the focal event lands last
     with visual emphasis. Click the focal row to expand its full pipeline trace.
   </p>
+
+  <div class="event-feed-terminal">
+    <div class="event-feed-terminal-titlebar">
+      <span class="terminal-dot terminal-dot-red"></span>
+      <span class="terminal-dot terminal-dot-amber"></span>
+      <span class="terminal-dot terminal-dot-green"></span>
+      <span class="event-feed-terminal-title">live-feed.log</span>
+    </div>
+    <pre id="event-feed-terminal-body" class="event-feed-terminal-body" aria-live="polite"></pre>
+  </div>
 
   <div id="event-feed-list" class="event-feed-list" aria-live="polite"></div>
   <div hidden>
